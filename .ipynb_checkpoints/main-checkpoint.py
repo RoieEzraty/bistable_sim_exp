@@ -1,0 +1,36 @@
+# %% Imports
+
+import importlib
+import numpy as np
+
+import plot_funcs
+
+importlib.reload(plot_funcs)
+
+# %% Compare
+
+final_t = None
+save = True
+
+exp_file_prelim = "..\\Meca500\\data\\training\\\\May28_UpdateFromSim\\2ndTip\\"
+sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\stiffk\\1stEnd\\"
+# sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
+
+init_buckle = "0001"
+desired_buckle = "0000"
+
+exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
+# exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
+sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(init_buckle, desired_buckle)
+
+plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save)
+
+# %% Single
+
+final_t = None
+save = True
+
+file_path = r"..\Bistable shape acquisition jax\Training\June15_H10_pos\1stAndLast\0010100001to1010100000.csv"
+plot_funcs.plot_sim_or_exp(file_path, mod="pos", final_t=final_t, save=save)
+
+# %%
