@@ -39,3 +39,10 @@ csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\train
 images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
 plot_funcs.training_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
 # %%
+
+# %% Position-state training video
+
+csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\1111to1101\1111to1101.csv"
+pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\1111to1101\pics"
+plot_funcs.training_position_states_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, fps=2)
+# %%

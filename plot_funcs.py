@@ -634,3 +634,287 @@ def training_data_and_vid(
         saved_paths.append(out_path)
 
     return saved_paths
+
+
+def training_position_states_and_vid(
+    training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos",
+    csv_file_path: Optional[Union[str, Path]] = None,
+    pics_dir: Optional[Union[str, Path]] = None,
+    output_path: Optional[Union[str, Path]] = None,
+    final_t: Optional[int] = None,
+    fps: int = 2,
+    dpi: int = 130,
+) -> List[Path]:
+    """
+    Create position-training video(s) from desired/measured/update state images.
+
+    Expected image names are ``des.jpg``, ``meas1.jpg``, ``meas2.jpg``, ...
+    and either ``up1.jpg``/``up2.jpg`` or ``update1.jpg``/``update2.jpg``.
+    This is separate from ``training_data_and_vid`` and writes
+    ``*_position_states_vid.mp4`` by default.
+    """
+    training_dir = Path(training_dir)
+    image_exts = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+
+    def natural_key(path: Path) -> List[Union[int, str]]:
+        parts = re.split(r"(\d+)", path.name.lower())
+        return [int(part) if part.isdigit() else part for part in parts]
+
+    def numbered_image_map(path: Path, prefixes: Tuple[str, ...]) -> dict:
+        images = {}
+        prefix_regex = "|".join(re.escape(prefix) for prefix in prefixes)
+        pattern = re.compile(rf"^({prefix_regex})(\d+)$", re.IGNORECASE)
+        for item in path.iterdir():
+            if not item.is_file() or item.suffix.lower() not in image_exts:
+                continue
+            match = pattern.match(item.stem)
+            if match:
+                images[int(match.group(2))] = item
+        return images
+
+    def find_des_image(path: Path) -> Optional[Path]:
+        for suffix in image_exts:
+            candidate = path / f"des{suffix}"
+            if candidate.exists():
+                return candidate
+        return None
+
+    def find_pics_dir_for_csv(csv_path: Path) -> Optional[Path]:
+        candidates = [csv_path.parent, csv_path.parent / "pics"]
+        candidates.extend([path for path in csv_path.parent.iterdir() if path.is_dir()])
+        for candidate in candidates:
+            if find_des_image(candidate) is not None:
+                meas_images = numbered_image_map(candidate, ("meas",))
+                up_images = numbered_image_map(candidate, ("up", "update"))
+                if meas_images and up_images:
+                    return candidate
+        return None
+
+    def find_pairs() -> List[Tuple[Path, Path, Path]]:
+        if csv_file_path is not None or pics_dir is not None:
+            if csv_file_path is None or pics_dir is None:
+                raise ValueError("csv_file_path and pics_dir must be supplied together.")
+            csv_path = Path(csv_file_path)
+            image_dir = Path(pics_dir)
+            out_path = Path(output_path) if output_path is not None else csv_path.with_name(f"{csv_path.stem}_position_states_vid.mp4")
+            return [(csv_path, image_dir, out_path)]
+
+        csv_paths = [
+            path for path in training_dir.rglob("*.csv")
+            if "oldver" not in path.stem.lower() and "dataset" not in path.stem.lower()
+        ]
+        pairs = []
+        for csv_path in sorted(csv_paths, key=natural_key):
+            image_dir = find_pics_dir_for_csv(csv_path)
+            if image_dir is None:
+                continue
+            out_path = csv_path.with_name(f"{csv_path.stem}_position_states_vid.mp4")
+            pairs.append((csv_path, image_dir, out_path))
+        return pairs
+
+    def prepare_dataframe(csv_path: Path) -> pd.DataFrame:
+        df = pd.read_csv(csv_path)
+        if final_t is not None:
+            if "t" in df.columns:
+                df = df[df["t"] <= final_t].copy()
+            else:
+                df = df.iloc[:final_t + 1].copy()
+        if "t" in df.columns:
+            df = df[df["t"] >= 1].copy()
+        else:
+            df = df.iloc[1:].copy()
+        if df.empty:
+            raise ValueError(f"No rows available to plot in {csv_path} after applying final_t.")
+        return df.reset_index(drop=True)
+
+    def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
+        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
+        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
+        if not finite_values:
+            return -1.0, 1.0
+        combined = np.concatenate(finite_values)
+        lim_min = float(np.min(combined))
+        lim_max = float(np.max(combined))
+        delta = lim_max - lim_min
+        if delta <= 0:
+            pad = max(abs(lim_min) * pad_fraction, 1.0)
+            return lim_min - pad, lim_max + pad
+        return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
+
+    def build_axis_lims(df_full: pd.DataFrame) -> dict:
+        t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
+        return {
+            "x": (float(t_full[0] - 0.25), float(t_full[-1] + 0.25)),
+            "measured_desired_position": padded_lims([
+                df_full["x_rest_meas"].to_numpy(dtype=float),
+                df_full["y_rest_meas"].to_numpy(dtype=float),
+                df_full["x_rest_des"].to_numpy(dtype=float),
+                df_full["y_rest_des"].to_numpy(dtype=float),
+            ]),
+            "update_position": padded_lims([
+                df_full["upd_x_tip"].to_numpy(dtype=float),
+                df_full["upd_y_tip"].to_numpy(dtype=float),
+            ]),
+            "measured_desired_angle": padded_lims([
+                df_full["theta_rest_meas"].to_numpy(dtype=float),
+                df_full["theta_rest_des"].to_numpy(dtype=float),
+            ]),
+            "update_angle": padded_lims([df_full["upd_tip_angle"].to_numpy(dtype=float)]),
+            "loss": padded_lims([
+                df_full["loss_MSE"].to_numpy(dtype=float),
+                np.zeros(len(df_full), dtype=float),
+            ]),
+        }
+
+    def plot_position_snapshot(fig: plt.Figure, axes: List[plt.Axes], df_full: pd.DataFrame,
+                               frame_idx: int, axis_lims: dict) -> None:
+        colors_lst, red, custom_cmap = colors.color_scheme()
+        df = df_full.iloc[:frame_idx + 1]
+        t = df["t"].to_numpy(dtype=float) if "t" in df.columns else np.arange(1, len(df) + 1, dtype=float)
+        font_size = 10
+
+        fig.suptitle(r"$t={}$".format(f"{t[-1]:g}"), fontsize=11)
+
+        ax_meas_des = axes[0]
+        ax_meas_des_angle = ax_meas_des.twinx()
+        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x$ meas.")
+        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y$ meas.")
+        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--", label=r"$x$ des.")
+        ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--", label=r"$y$ des.")
+        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red, label=r"$\theta$ meas.")
+        ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--", label=r"$\theta$ des.")
+        ax_meas_des.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
+        ax_meas_des_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
+        ax_meas_des.set_ylim(axis_lims["measured_desired_position"])
+        ax_meas_des_angle.set_ylim(axis_lims["measured_desired_angle"])
+        lines, labels = ax_meas_des.get_legend_handles_labels()
+        angle_lines, angle_labels = ax_meas_des_angle.get_legend_handles_labels()
+        ax_meas_des.legend(lines + angle_lines, labels + angle_labels, loc="best", ncol=3, fontsize=8)
+
+        ax_update = axes[1]
+        ax_update_angle = ax_update.twinx()
+        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x$ update")
+        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y$ update")
+        ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, label=r"$\theta$ update")
+        ax_update.set_xlabel("t", fontsize=font_size)
+        ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
+        ax_update_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
+        ax_update.set_ylim(axis_lims["update_position"])
+        ax_update_angle.set_ylim(axis_lims["update_angle"])
+        lines, labels = ax_update.get_legend_handles_labels()
+        angle_lines, angle_labels = ax_update_angle.get_legend_handles_labels()
+        ax_update.legend(lines + angle_lines, labels + angle_labels, loc="best", ncol=3, fontsize=8)
+
+        ax_loss = axes[2]
+        ax_loss.plot(t, df["loss_MSE"].to_numpy(dtype=float), color=colors_lst[0], label=r"$\mathcal{L}$")
+        ax_loss.plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
+        ax_loss.set_xlabel("t", fontsize=font_size)
+        ax_loss.set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
+        ax_loss.set_ylim(axis_lims["loss"])
+        ax_loss.legend(loc="best", fontsize=8)
+
+        for ax in axes:
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(labelsize=8)
+            ax.set_xlim(axis_lims["x"])
+
+    def show_image(ax: plt.Axes, image_path: Path, title: str) -> None:
+        ax.imshow(plt.imread(image_path))
+        ax.set_title(title, fontsize=10)
+        ax.axis("off")
+
+    saved_paths = []
+    pairs = find_pairs()
+    if not pairs:
+        raise FileNotFoundError(f"No matching position CSV/pics pairs found in {training_dir}.")
+
+    for csv_path, image_dir, out_path in pairs:
+        df = prepare_dataframe(csv_path)
+        required_cols = [
+            "upd_x_tip", "upd_y_tip", "upd_tip_angle", "loss_MSE",
+            "x_rest_meas", "y_rest_meas", "theta_rest_meas",
+            "x_rest_des", "y_rest_des", "theta_rest_des",
+        ]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            raise KeyError(f"Missing required columns in {csv_path}: {missing_cols}")
+
+        des_image = find_des_image(image_dir)
+        meas_images = numbered_image_map(image_dir, ("meas",))
+        update_images = numbered_image_map(image_dir, ("up", "update"))
+        if des_image is None:
+            raise FileNotFoundError(f"No des image found in {image_dir}.")
+
+        frame_numbers = sorted(set(meas_images).intersection(update_images))
+        if not frame_numbers:
+            raise FileNotFoundError(f"No matching measN/upN or measN/updateN image pairs found in {image_dir}.")
+
+        frame_count = min(len(df), len(frame_numbers))
+        frame_numbers = frame_numbers[:frame_count]
+        df = df.iloc[:frame_count].copy().reset_index(drop=True)
+        if len(frame_numbers) != len(df):
+            print(f"{csv_path.name}: using {frame_count} frames from {len(frame_numbers)} image pairs and {len(df)} CSV rows.")
+
+        axis_lims = build_axis_lims(df)
+        fig = plt.figure(figsize=(12, 7.0), constrained_layout=True)
+
+        def draw_frame(frame: int) -> NDArray[np.uint8]:
+            fig.clear()
+            grid = fig.add_gridspec(3, 2, width_ratios=[1.25, 1.0], height_ratios=[1, 1, 1])
+            ax_des = fig.add_subplot(grid[0, 0])
+            ax_meas = fig.add_subplot(grid[1, 0])
+            ax_update = fig.add_subplot(grid[2, 0])
+            plot_axes = [
+                fig.add_subplot(grid[0, 1]),
+                fig.add_subplot(grid[1, 1]),
+                fig.add_subplot(grid[2, 1]),
+            ]
+
+            frame_number = frame_numbers[frame]
+            show_image(ax_des, des_image, "desired")
+            show_image(ax_meas, meas_images[frame_number], f"measured t={frame_number}")
+            show_image(ax_update, update_images[frame_number], f"update t={frame_number}")
+            plot_position_snapshot(fig, plot_axes, df, frame, axis_lims)
+            fig.canvas.draw()
+            rgba = np.asarray(fig.canvas.buffer_rgba())
+            return rgba[:, :, :3].copy()
+
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        if out_path.suffix.lower() == ".gif":
+            from PIL import Image
+
+            pil_frames = [Image.fromarray(draw_frame(frame)) for frame in range(frame_count)]
+            durations = [int(1000 / fps)] * frame_count
+            durations[-1] = 3000
+            pil_frames[0].save(
+                out_path,
+                save_all=True,
+                append_images=pil_frames[1:],
+                duration=durations,
+                loop=0,
+            )
+        else:
+            try:
+                import cv2
+            except ImportError as exc:
+                raise ImportError("Saving MP4/AVI requires opencv-python (cv2).") from exc
+
+            frame_rgb = draw_frame(0)
+            height, width = frame_rgb.shape[:2]
+            fourcc = cv2.VideoWriter_fourcc(*("mp4v" if out_path.suffix.lower() == ".mp4" else "XVID"))
+            writer = cv2.VideoWriter(str(out_path), fourcc, fps, (width, height))
+            if not writer.isOpened():
+                raise RuntimeError(f"Could not open video writer for {out_path}.")
+            try:
+                for frame in range(frame_count):
+                    frame_rgb = draw_frame(frame)
+                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                    repeats = max(1, int(round(3 * fps))) if frame == frame_count - 1 else 1
+                    for _ in range(repeats):
+                        writer.write(frame_bgr)
+            finally:
+                writer.release()
+        plt.close(fig)
+        saved_paths.append(out_path)
+
+    return saved_paths
