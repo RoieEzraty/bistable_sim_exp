@@ -42,7 +42,7 @@ plot_funcs.training_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, f
 
 # %% Position-state training video
 
-csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\1111to1101\1111to1101.csv"
-pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\1111to1101\pics"
-plot_funcs.training_position_states_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, fps=2)
+csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
+pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
+plot_funcs.training_position_states_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
 # %%

@@ -641,6 +641,7 @@ def training_position_states_and_vid(
     csv_file_path: Optional[Union[str, Path]] = None,
     pics_dir: Optional[Union[str, Path]] = None,
     output_path: Optional[Union[str, Path]] = None,
+    infer_image_sequence: bool = False,
     final_t: Optional[int] = None,
     fps: int = 2,
     dpi: int = 130,
@@ -650,6 +651,8 @@ def training_position_states_and_vid(
 
     Expected image names are ``des.jpg``, ``meas1.jpg``, ``meas2.jpg``, ...
     and either ``up1.jpg``/``up2.jpg`` or ``update1.jpg``/``update2.jpg``.
+    With ``infer_image_sequence=True``, image names are ignored and natural file
+    order is used as: desired, meas1, update1, meas2, update2, ...
     This is separate from ``training_data_and_vid`` and writes
     ``*_position_states_vid.mp4`` by default.
     """
@@ -672,6 +675,39 @@ def training_position_states_and_vid(
                 images[int(match.group(2))] = item
         return images
 
+    def image_files_in_dir(path: Path) -> List[Path]:
+        return sorted(
+            [item for item in path.iterdir() if item.is_file() and item.suffix.lower() in image_exts],
+            key=natural_key,
+        )
+
+    def infer_sequence_images(path: Path) -> Tuple[Optional[Path], List[Tuple[int, Path, Path]]]:
+        image_paths = image_files_in_dir(path)
+        if len(image_paths) < 3:
+            return None, []
+        des_image = image_paths[0]
+        state_images = image_paths[1:]
+        paired_state_count = len(state_images) - (len(state_images) % 2)
+        frame_entries = []
+        for pair_idx in range(0, paired_state_count, 2):
+            t_number = pair_idx // 2 + 1
+            frame_entries.append((t_number, state_images[pair_idx], state_images[pair_idx + 1]))
+        return des_image, frame_entries
+
+    def named_sequence_images(path: Path) -> Tuple[Optional[Path], List[Tuple[int, Path, Path]]]:
+        des_image = find_des_image(path)
+        meas_images = numbered_image_map(path, ("meas",))
+        update_images = numbered_image_map(path, ("up", "update"))
+        frame_numbers = sorted(set(meas_images).intersection(update_images))
+        frame_entries = [(frame_number, meas_images[frame_number], update_images[frame_number])
+                         for frame_number in frame_numbers]
+        return des_image, frame_entries
+
+    def get_state_images(path: Path) -> Tuple[Optional[Path], List[Tuple[int, Path, Path]]]:
+        if infer_image_sequence:
+            return infer_sequence_images(path)
+        return named_sequence_images(path)
+
     def find_des_image(path: Path) -> Optional[Path]:
         for suffix in image_exts:
             candidate = path / f"des{suffix}"
@@ -683,11 +719,9 @@ def training_position_states_and_vid(
         candidates = [csv_path.parent, csv_path.parent / "pics"]
         candidates.extend([path for path in csv_path.parent.iterdir() if path.is_dir()])
         for candidate in candidates:
-            if find_des_image(candidate) is not None:
-                meas_images = numbered_image_map(candidate, ("meas",))
-                up_images = numbered_image_map(candidate, ("up", "update"))
-                if meas_images and up_images:
-                    return candidate
+            des_image, frame_entries = get_state_images(candidate)
+            if des_image is not None and frame_entries:
+                return candidate
         return None
 
     def find_pairs() -> List[Tuple[Path, Path, Path]]:
@@ -839,21 +873,20 @@ def training_position_states_and_vid(
         if missing_cols:
             raise KeyError(f"Missing required columns in {csv_path}: {missing_cols}")
 
-        des_image = find_des_image(image_dir)
-        meas_images = numbered_image_map(image_dir, ("meas",))
-        update_images = numbered_image_map(image_dir, ("up", "update"))
+        des_image, frame_entries = get_state_images(image_dir)
         if des_image is None:
             raise FileNotFoundError(f"No des image found in {image_dir}.")
-
-        frame_numbers = sorted(set(meas_images).intersection(update_images))
-        if not frame_numbers:
+        if not frame_entries:
+            if infer_image_sequence:
+                raise FileNotFoundError(f"No inferred desired/measured/update image sequence found in {image_dir}.")
             raise FileNotFoundError(f"No matching measN/upN or measN/updateN image pairs found in {image_dir}.")
 
-        frame_count = min(len(df), len(frame_numbers))
-        frame_numbers = frame_numbers[:frame_count]
+        original_frame_count = len(frame_entries)
+        frame_count = min(len(df), original_frame_count)
+        frame_entries = frame_entries[:frame_count]
         df = df.iloc[:frame_count].copy().reset_index(drop=True)
-        if len(frame_numbers) != len(df):
-            print(f"{csv_path.name}: using {frame_count} frames from {len(frame_numbers)} image pairs and {len(df)} CSV rows.")
+        if original_frame_count != len(df):
+            print(f"{csv_path.name}: using {frame_count} frames from {original_frame_count} image pairs and {len(df)} CSV rows.")
 
         axis_lims = build_axis_lims(df)
         fig = plt.figure(figsize=(12, 7.0), constrained_layout=True)
@@ -870,10 +903,10 @@ def training_position_states_and_vid(
                 fig.add_subplot(grid[2, 1]),
             ]
 
-            frame_number = frame_numbers[frame]
+            frame_number, meas_image, update_image = frame_entries[frame]
             show_image(ax_des, des_image, "desired")
-            show_image(ax_meas, meas_images[frame_number], f"measured t={frame_number}")
-            show_image(ax_update, update_images[frame_number], f"update t={frame_number}")
+            show_image(ax_meas, meas_image, f"measured t={frame_number}")
+            show_image(ax_update, update_image, f"update t={frame_number}")
             plot_position_snapshot(fig, plot_axes, df, frame, axis_lims)
             fig.canvas.draw()
             rgba = np.asarray(fig.canvas.buffer_rgba())
