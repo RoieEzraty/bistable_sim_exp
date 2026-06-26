@@ -35,14 +35,16 @@ plot_funcs.plot_sim_or_exp(file_path, mod="pos", final_t=final_t, save=save)
 
 # %%
 
-csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
-images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
-plot_funcs.training_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
+importlib.reload(plot_funcs)
+csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June20_fullTrainingContd\0011to1000pos2\0011to1000.csv"
+images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June20_fullTrainingContd\0011to1000pos2\pics" 
+plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
 # %%
 
 # %% Position-state training video
 
-csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
-pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
-plot_funcs.training_position_states_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
+importlib.reload(plot_funcs)
+csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June23_UpdateFromSimPos\0001to1000\0001to1000.csv"
+pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June23_UpdateFromSimPos\0001to1000\pics"
+plot_funcs.training_pos_data_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
 # %%

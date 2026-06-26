@@ -320,7 +320,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     plt.show()
 
 
-def training_data_and_vid(
+def training_force_data_and_vid(
     training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining",
     csv_file_path: Optional[Union[str, Path]] = None,
     image_dir: Optional[Union[str, Path]] = None,
@@ -478,20 +478,7 @@ def training_data_and_vid(
 
         fig.suptitle(r"$t={}$".format(f"{t[-1]:g}"), fontsize=title_size)
 
-        ax_update = axes[0]
-        ax_angle = ax_update.twinx()
-        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x_{tip}$ update")
-        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y_{tip}$ update")
-        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, label=r"$\theta_{tip}$ update")
-        ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
-        ax_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
-        ax_update.set_ylim(axis_lims["position"])
-        ax_angle.set_ylim(axis_lims["angle"])
-        pos_lines, pos_labels = ax_update.get_legend_handles_labels()
-        angle_lines, angle_labels = ax_angle.get_legend_handles_labels()
-        ax_update.legend(pos_lines + angle_lines, pos_labels + angle_labels, loc="best", ncol=3, fontsize=8)
-
-        ax_force = axes[1]
+        ax_force = axes[0]
         measured_desired_cols = [
             ("F_x_meas", colors_lst[2], "-", r"$F_x$ meas."),
             ("F_y_meas", colors_lst[1], "-", r"$F_y$ meas."),
@@ -502,9 +489,22 @@ def training_data_and_vid(
             if col in df.columns:
                 ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle,
                               alpha=0.8, label=label)
-        ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
+        ax_force.set_ylabel(r"$F_{meas}\,\left[mN\right]$", fontsize=font_size)
         ax_force.set_ylim(axis_lims["measured_desired_force"])
         ax_force.legend(loc="best", ncol=2, fontsize=8)
+
+        ax_update = axes[1]
+        ax_angle = ax_update.twinx()
+        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x_{tip}$ update")
+        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y_{tip}$ update")
+        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, label=r"$\theta_{tip}$ update")
+        ax_update.set_ylabel(r"update pos $\left[m\right]$", fontsize=font_size)
+        ax_angle.set_ylabel(r"update angle $\left[\degree\right]$", fontsize=font_size)
+        ax_update.set_ylim(axis_lims["position"])
+        ax_angle.set_ylim(axis_lims["angle"])
+        pos_lines, pos_labels = ax_update.get_legend_handles_labels()
+        angle_lines, angle_labels = ax_angle.get_legend_handles_labels()
+        ax_update.legend(pos_lines + angle_lines, pos_labels + angle_labels, loc="best", ncol=3, fontsize=8)
 
         next_axis_idx = 2
         ax_update_force = axes[next_axis_idx]
@@ -636,7 +636,7 @@ def training_data_and_vid(
     return saved_paths
 
 
-def training_position_states_and_vid(
+def training_pos_data_and_vid(
     training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos",
     csv_file_path: Optional[Union[str, Path]] = None,
     pics_dir: Optional[Union[str, Path]] = None,
@@ -775,6 +775,25 @@ def training_position_states_and_vid(
             return lim_min - pad, lim_max + pad
         return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
 
+    def centered_lims(center_values: NDArray[np.float64], values: List[NDArray[np.float64]],
+                      pad_fraction: float = 0.08) -> Tuple[float, float]:
+        center_arr = np.asarray(center_values, dtype=float).reshape(-1)
+        center_arr = center_arr[np.isfinite(center_arr)]
+        if len(center_arr) == 0:
+            return padded_lims(values, pad_fraction)
+        center = float(np.mean(center_arr))
+        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
+        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
+        if not finite_values:
+            return center - 1.0, center + 1.0
+        combined = np.concatenate(finite_values)
+        half_range = float(np.max(np.abs(combined - center)))
+        if half_range <= 0:
+            half_range = max(abs(center) * pad_fraction, 1.0)
+        else:
+            half_range *= 1.0 + pad_fraction
+        return center - half_range, center + half_range
+
     def build_axis_lims(df_full: pd.DataFrame) -> dict:
         t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
         return {
@@ -789,10 +808,13 @@ def training_position_states_and_vid(
                 df_full["upd_x_tip"].to_numpy(dtype=float),
                 df_full["upd_y_tip"].to_numpy(dtype=float),
             ]),
-            "measured_desired_angle": padded_lims([
+            "measured_desired_angle": centered_lims(
+                df_full["theta_rest_des"].to_numpy(dtype=float),
+                [
                 df_full["theta_rest_meas"].to_numpy(dtype=float),
                 df_full["theta_rest_des"].to_numpy(dtype=float),
-            ]),
+                ],
+            ),
             "update_angle": padded_lims([df_full["upd_tip_angle"].to_numpy(dtype=float)]),
             "loss": padded_lims([
                 df_full["loss_MSE"].to_numpy(dtype=float),
@@ -811,19 +833,25 @@ def training_position_states_and_vid(
 
         ax_meas_des = axes[0]
         ax_meas_des_angle = ax_meas_des.twinx()
-        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x$ meas.")
-        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y$ meas.")
-        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--", label=r"$x$ des.")
-        ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--", label=r"$y$ des.")
-        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red, label=r"$\theta$ meas.")
-        ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--", label=r"$\theta$ des.")
+        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2])
+        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1])
+        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red)
+        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--")
+        ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--")
+        ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--")
         ax_meas_des.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
         ax_meas_des_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
         ax_meas_des.set_ylim(axis_lims["measured_desired_position"])
         ax_meas_des_angle.set_ylim(axis_lims["measured_desired_angle"])
-        lines, labels = ax_meas_des.get_legend_handles_labels()
-        angle_lines, angle_labels = ax_meas_des_angle.get_legend_handles_labels()
-        ax_meas_des.legend(lines + angle_lines, labels + angle_labels, loc="best", ncol=3, fontsize=8)
+        meas_des_handles = [
+            Line2D([0], [0], color=colors_lst[2], linestyle="-", label=r"$x$ meas."),
+            Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
+            Line2D([0], [0], color=colors_lst[1], linestyle="-", label=r"$y$ meas."),
+            Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
+            Line2D([0], [0], color=red, linestyle="-", label=r"$\theta$ meas."),
+            Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des.")
+        ]
+        ax_meas_des.legend(handles=meas_des_handles, loc="best", ncol=3, fontsize=8)
 
         ax_update = axes[1]
         ax_update_angle = ax_update.twinx()
@@ -854,8 +882,11 @@ def training_position_states_and_vid(
 
     def show_image(ax: plt.Axes, image_path: Path, title: str) -> None:
         ax.imshow(plt.imread(image_path))
-        ax.set_title(title, fontsize=10)
-        ax.axis("off")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.set_ylabel(title, fontsize=11, rotation=90, labelpad=12)
 
     saved_paths = []
     pairs = find_pairs()
@@ -889,14 +920,14 @@ def training_position_states_and_vid(
             print(f"{csv_path.name}: using {frame_count} frames from {original_frame_count} image pairs and {len(df)} CSV rows.")
 
         axis_lims = build_axis_lims(df)
-        fig = plt.figure(figsize=(12, 7.0), constrained_layout=True)
+        fig = plt.figure(figsize=(13.2, 7.2), constrained_layout=True)
 
         def draw_frame(frame: int) -> NDArray[np.uint8]:
             fig.clear()
-            grid = fig.add_gridspec(3, 2, width_ratios=[1.25, 1.0], height_ratios=[1, 1, 1])
-            ax_des = fig.add_subplot(grid[0, 0])
-            ax_meas = fig.add_subplot(grid[1, 0])
-            ax_update = fig.add_subplot(grid[2, 0])
+            grid = fig.add_gridspec(3, 2, width_ratios=[1.65, 1.0], height_ratios=[1, 1, 1])
+            ax_meas = fig.add_subplot(grid[0, 0])
+            ax_update = fig.add_subplot(grid[1, 0])
+            ax_des = fig.add_subplot(grid[2, 0])
             plot_axes = [
                 fig.add_subplot(grid[0, 1]),
                 fig.add_subplot(grid[1, 1]),
@@ -904,9 +935,9 @@ def training_position_states_and_vid(
             ]
 
             frame_number, meas_image, update_image = frame_entries[frame]
+            show_image(ax_meas, meas_image, "measured")
+            show_image(ax_update, update_image, "update")
             show_image(ax_des, des_image, "desired")
-            show_image(ax_meas, meas_image, f"measured t={frame_number}")
-            show_image(ax_update, update_image, f"update t={frame_number}")
             plot_position_snapshot(fig, plot_axes, df, frame, axis_lims)
             fig.canvas.draw()
             rgba = np.asarray(fig.canvas.buffer_rgba())
