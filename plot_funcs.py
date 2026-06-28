@@ -22,6 +22,83 @@ from typing import TYPE_CHECKING, Callable, Union, Optional
 import colors
 
 
+def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
+    finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
+    finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
+    if not finite_values:
+        return -1.0, 1.0
+    combined = np.concatenate(finite_values)
+    lim_min = float(np.min(combined))
+    lim_max = float(np.max(combined))
+    delta = lim_max - lim_min
+    if delta <= 0:
+        pad = max(abs(lim_min) * pad_fraction, 1.0)
+        return lim_min - pad, lim_max + pad
+    return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
+
+
+def centered_lims(center_values: NDArray[np.float64], values: List[NDArray[np.float64]],
+                  pad_fraction: float = 0.08) -> Tuple[float, float]:
+    center_arr = np.asarray(center_values, dtype=float).reshape(-1)
+    center_arr = center_arr[np.isfinite(center_arr)]
+    if len(center_arr) == 0:
+        return padded_lims(values, pad_fraction)
+    center = float(np.mean(center_arr))
+    finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
+    finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
+    if not finite_values:
+        return center - 1.0, center + 1.0
+    combined = np.concatenate(finite_values)
+    half_range = float(np.max(np.abs(combined - center)))
+    if half_range <= 0:
+        half_range = max(abs(center) * pad_fraction, 1.0)
+    else:
+        half_range *= 1.0 + pad_fraction
+    return center - half_range, center + half_range
+
+
+def time_step_lims(t_values: NDArray[np.float64], pad: float = 0.25) -> Tuple[float, float]:
+    t_arr = np.asarray(t_values, dtype=float).reshape(-1)
+    t_arr = t_arr[np.isfinite(t_arr)]
+    if len(t_arr) == 0:
+        return -pad, pad
+    return float(t_arr[0] - pad), float(t_arr[-1] + pad)
+
+
+def update_position_angle_lims(
+    x_update: NDArray[np.float64],
+    y_update: NDArray[np.float64],
+    angle_update: NDArray[np.float64],
+) -> dict:
+    angle_arr = np.asarray(angle_update, dtype=float).reshape(-1)
+    finite_angle = angle_arr[np.isfinite(angle_arr)]
+    center_values = finite_angle[-1:] if len(finite_angle) else angle_arr[-1:]
+    return {
+        "position": padded_lims([x_update, y_update]),
+        "angle": centered_lims(center_values, [angle_update]),
+    }
+
+
+def video_writer_fps(output_path: Path, fps: int, playback_speed: float = 2.0) -> float:
+    if output_path.suffix.lower() == ".mp4":
+        return float(fps) * float(playback_speed)
+    return float(fps)
+
+
+def crop_frame_edges(
+    frame: NDArray[np.uint8],
+    left_fraction: float = 0.0,
+    bottom_fraction: float = 0.0,
+) -> NDArray[np.uint8]:
+    height, width = frame.shape[:2]
+    left_px = int(round(width * max(0.0, min(left_fraction, 0.85))))
+    bottom_px = int(round(height * max(0.0, min(bottom_fraction, 0.85))))
+    bottom_px = height - bottom_px
+    if left_px >= width - 1 or bottom_px <= 1:
+        return frame
+    return frame[:bottom_px, left_px:]
+
+
 def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                                   final_t: Optional[int] = None, save: bool = False) -> None:
     """
@@ -330,7 +407,9 @@ def plot_force_along_traj(
     csv_file_path_des: Optional[Union[str, Path]] = None,
     fps: int = 2,
     save: bool = True,
-    dpi: int = 130,
+    dpi: int = 180,
+    video_crop_left_fraction: float = 0.12,
+    video_crop_bottom_fraction: float = 0.12,
 ) -> Path:
     """
     Create a video with the measured trajectory video on the left and
@@ -392,20 +471,6 @@ def plot_force_along_traj(
 
     colors_lst, red, custom_cmap = colors.color_scheme()
 
-    def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
-        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
-        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
-        if not finite_values:
-            return -1.0, 1.0
-        combined = np.concatenate(finite_values)
-        lim_min = float(np.min(combined))
-        lim_max = float(np.max(combined))
-        delta = lim_max - lim_min
-        if delta <= 0:
-            pad = max(abs(lim_min) * pad_fraction, 1.0)
-            return lim_min - pad, lim_max + pad
-        return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
-
     x_lims = padded_lims([y])
     force_lim_values = [fx, fy, np.asarray([fx_mean, fy_mean], dtype=float)]
     if des_means is not None:
@@ -432,7 +497,7 @@ def plot_force_along_traj(
     if final_time_s < initial_time_s:
         raise ValueError("final_time_s must be greater than or equal to initial_time_s.")
 
-    fig = plt.figure(figsize=(11.5, 5.2), constrained_layout=True)
+    fig = plt.figure(figsize=(11.5, 5.2), dpi=dpi, constrained_layout=True)
 
     def draw_frame(video_frame_bgr: NDArray[np.uint8], plot_idx: int, show_means: bool) -> NDArray[np.uint8]:
         fig.clear()
@@ -440,6 +505,11 @@ def plot_force_along_traj(
         ax_video = fig.add_subplot(grid[0, 0])
         ax_force = fig.add_subplot(grid[0, 1])
 
+        video_frame_bgr = crop_frame_edges(
+            video_frame_bgr,
+            left_fraction=video_crop_left_fraction,
+            bottom_fraction=video_crop_bottom_fraction,
+        )
         video_frame_rgb = cv2.cvtColor(video_frame_bgr, cv2.COLOR_BGR2RGB)
         ax_video.imshow(video_frame_rgb)
         ax_video.set_xticks([])
@@ -514,7 +584,7 @@ def plot_force_along_traj(
             height, width = frame_rgb.shape[:2]
             if writer is None:
                 fourcc = cv2.VideoWriter_fourcc(*("mp4v" if output_path.suffix.lower() == ".mp4" else "XVID"))
-                writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+                writer = cv2.VideoWriter(str(output_path), fourcc, video_writer_fps(output_path, fps), (width, height))
                 if not writer.isOpened():
                     raise RuntimeError(f"Could not open video writer for {output_path}.")
 
@@ -539,6 +609,313 @@ def plot_force_along_traj(
     return output_path
 
 
+def plot_force_during_zero_force(
+    csv_file_path: Union[str, Path],
+    vid_path: Union[str, Path],
+    initial_time_vid: float,
+    final_time_vid: float,
+    final_time_csv: Optional[Union[int, float]] = None,
+    fps: int = 2,
+    mean_line_mode: str = "meas",
+    csv_file_path_des: Optional[Union[str, Path]] = None,
+    output_path: Optional[Union[str, Path]] = None,
+    save: bool = True,
+    dpi: int = 180,
+    video_crop_left_fraction: float = 0.12,
+    video_crop_bottom_fraction: float = 0.12,
+) -> Path:
+    """
+    Create a video with the source video on the left and force/update values on the right.
+
+    The source video plays for its full duration. Force plotting starts at
+    ``initial_time_vid`` and reaches ``final_time_csv`` by ``final_time_vid``.
+    The final plotted force sample is emphasized with a larger marker.
+    """
+    csv_path = Path(csv_file_path)
+    video_path = Path(vid_path)
+    if output_path is None:
+        output_path = csv_path.with_name(f"{csv_path.stem}_zero_force_vid.mp4")
+    output_path = Path(output_path)
+
+    if not save:
+        raise ValueError("plot_force_during_zero_force creates a video file; call it with save=True.")
+    mean_line_mode = mean_line_mode.lower()
+    if mean_line_mode not in {"des", "meas"}:
+        raise ValueError('mean_line_mode must be either "des" or "meas".')
+
+    col_candidates = {
+        "t": ("t", "time", "time_s"),
+        "fx": ("F_x", "Fx", "F_x_meas", "Fx_meas"),
+        "fy": ("F_y", "Fy", "F_y_meas", "Fy_meas"),
+        "x": ("upd_x_tip", "x_tip", "x", "update_x"),
+        "y": ("upd_y_tip", "y_tip", "y", "update_y"),
+        "angle": ("upd_tip_angle", "angle_tip", "theta", "angle", "update_angle"),
+        "x_des": ("x_desired", "x_rest_des", "x_des", "x_tip_des", "x"),
+        "y_des": ("y_desired", "y_rest_des", "y_des", "y_tip_des", "y"),
+        "angle_des": ("theta_desired", "angle_desired", "theta_rest_des", "theta_des", "angle_des", "tip_angle_des", "theta"),
+    }
+
+    def find_col(df_in: pd.DataFrame, kind: str, path: Path, required: bool = True) -> Optional[str]:
+        for col in col_candidates[kind]:
+            if col in df_in.columns:
+                return col
+        if required:
+            raise KeyError(f"Missing {kind} column in {path}. Tried {col_candidates[kind]}.")
+        return None
+
+    def read_zero_force_data(path: Path) -> Tuple[
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
+    ]:
+        df_in = pd.read_csv(path)
+        fx_col = find_col(df_in, "fx", path)
+        fy_col = find_col(df_in, "fy", path)
+        x_col = find_col(df_in, "x", path)
+        y_col = find_col(df_in, "y", path)
+        angle_col = find_col(df_in, "angle", path)
+        t_col = find_col(df_in, "t", path, required=False)
+        use_cols = [fx_col, fy_col, x_col, y_col, angle_col]
+        if t_col is not None:
+            use_cols = [t_col] + use_cols
+        df_in = df_in[use_cols].dropna().reset_index(drop=True)
+        if df_in.empty:
+            raise ValueError(f"No valid zero-force rows found in {path}.")
+        t_values = (
+            df_in[t_col].to_numpy(dtype=float)
+            if t_col is not None else np.arange(len(df_in), dtype=float)
+        )
+        return (
+            t_values,
+            df_in[fx_col].to_numpy(dtype=float),
+            df_in[fy_col].to_numpy(dtype=float),
+            df_in[x_col].to_numpy(dtype=float),
+            df_in[y_col].to_numpy(dtype=float),
+            df_in[angle_col].to_numpy(dtype=float),
+        )
+
+    def read_desired_position_data(path: Path) -> Optional[Tuple[
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
+    ]]:
+        df_in = pd.read_csv(path)
+        x_des_col = find_col(df_in, "x_des", path, required=False)
+        y_des_col = find_col(df_in, "y_des", path, required=False)
+        angle_des_col = find_col(df_in, "angle_des", path, required=False)
+        if x_des_col is None or y_des_col is None or angle_des_col is None:
+            return None
+        t_col = find_col(df_in, "t", path, required=False)
+        use_cols = [x_des_col, y_des_col, angle_des_col]
+        if t_col is not None:
+            use_cols = [t_col] + use_cols
+        df_in = df_in[use_cols].dropna().reset_index(drop=True)
+        if df_in.empty:
+            return None
+        t_values = (
+            df_in[t_col].to_numpy(dtype=float)
+            if t_col is not None else np.arange(len(df_in), dtype=float)
+        )
+        return (
+            t_values,
+            df_in[x_des_col].to_numpy(dtype=float),
+            df_in[y_des_col].to_numpy(dtype=float),
+            df_in[angle_des_col].to_numpy(dtype=float),
+        )
+
+    t_csv, fx, fy, upd_x, upd_y, upd_angle = read_zero_force_data(csv_path)
+    if final_time_csv is not None:
+        final_time_csv = float(final_time_csv)
+        if "t" in pd.read_csv(csv_path, nrows=0).columns:
+            keep = t_csv <= final_time_csv
+            if not np.any(keep):
+                raise ValueError("No CSV rows remain after applying final_time_csv.")
+            t_csv, fx, fy = t_csv[keep], fx[keep], fy[keep]
+            upd_x, upd_y, upd_angle = upd_x[keep], upd_y[keep], upd_angle[keep]
+        else:
+            final_count = max(1, min(len(t_csv), int(final_time_csv)))
+            t_csv, fx, fy = t_csv[:final_count], fx[:final_count], fy[:final_count]
+            upd_x, upd_y, upd_angle = upd_x[:final_count], upd_y[:final_count], upd_angle[:final_count]
+
+    desired_position_source = Path(csv_file_path_des) if csv_file_path_des is not None else None
+    if desired_position_source is None and mean_line_mode == "des":
+        desired_position_source = csv_path
+    desired_position = read_desired_position_data(desired_position_source) if desired_position_source is not None else None
+
+    line_style = ":" if mean_line_mode == "des" else "-"
+    colors_lst, red, custom_cmap = colors.color_scheme()
+
+    x_lims = time_step_lims(t_csv)
+    force_lims = padded_lims([fx, fy])
+    update_pos_values = [upd_x, upd_y]
+    update_angle_values = [upd_angle]
+    if desired_position is not None:
+        _, x_des, y_des, angle_des = desired_position
+        update_pos_values.extend([x_des, y_des])
+        update_angle_values.append(angle_des)
+    update_lims = {
+        "position": padded_lims(update_pos_values),
+        "angle": centered_lims(update_angle_values[-1][-1:], update_angle_values),
+    }
+
+    try:
+        import cv2
+    except ImportError as exc:
+        raise ImportError("Saving MP4 requires opencv-python (cv2).") from exc
+
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        raise FileNotFoundError(f"Could not open video: {video_path}")
+
+    input_fps = float(cap.get(cv2.CAP_PROP_FPS))
+    if not np.isfinite(input_fps) or input_fps <= 0:
+        input_fps = float(fps)
+    sample_every = max(1, int(round(input_fps / fps)))
+    initial_time_vid = max(0.0, float(initial_time_vid))
+    final_time_vid = float(final_time_vid)
+    if final_time_vid < initial_time_vid:
+        raise ValueError("final_time_vid must be greater than or equal to initial_time_vid.")
+
+    fig = plt.figure(figsize=(11.5, 6.2), dpi=dpi, constrained_layout=True)
+
+    def plot_index_for_video_time(video_time_s: float) -> int:
+        if video_time_s < initial_time_vid:
+            return -1
+        if final_time_vid == initial_time_vid or video_time_s >= final_time_vid:
+            return len(t_csv) - 1
+        progress = (video_time_s - initial_time_vid) / (final_time_vid - initial_time_vid)
+        return int(np.floor(progress * (len(t_csv) - 1)))
+
+    def draw_frame(video_frame_bgr: NDArray[np.uint8], plot_idx: int) -> NDArray[np.uint8]:
+        fig.clear()
+        grid = fig.add_gridspec(2, 2, width_ratios=[1.25, 1.0], height_ratios=[1, 1])
+        ax_video = fig.add_subplot(grid[:, 0])
+        ax_force = fig.add_subplot(grid[0, 1])
+        ax_update = fig.add_subplot(grid[1, 1])
+        ax_update_angle = ax_update.twinx()
+
+        video_frame_bgr = crop_frame_edges(
+            video_frame_bgr,
+            left_fraction=video_crop_left_fraction,
+            bottom_fraction=video_crop_bottom_fraction,
+        )
+        ax_video.imshow(cv2.cvtColor(video_frame_bgr, cv2.COLOR_BGR2RGB))
+        ax_video.set_xticks([])
+        ax_video.set_yticks([])
+        for spine in ax_video.spines.values():
+            spine.set_visible(False)
+
+        upto = max(0, min(plot_idx + 1, len(t_csv)))
+        if upto > 0:
+            ax_force.plot(t_csv[:upto], fx[:upto], color=colors_lst[2],
+                          linestyle=line_style, marker="o", markersize=4)
+            ax_force.plot(t_csv[:upto], fy[:upto], color=colors_lst[1],
+                          linestyle=line_style, marker="o", markersize=4)
+            # if plot_idx >= len(t_csv) - 1:
+            #     ax_force.plot(t_csv[-1], fx[-1], color=colors_lst[2], marker="o",
+            #                   markersize=10, linestyle="None")
+            #     ax_force.plot(t_csv[-1], fy[-1], color=colors_lst[1], marker="o",
+            #                   markersize=10, linestyle="None")
+
+        ax_force.set_xlim(x_lims)
+        ax_force.set_ylim(force_lims)
+        ax_force.set_xlabel("step" if final_time_csv is not None else "CSV sample")
+        ax_force.set_ylabel(r"$F\,\left[mN\right]$")
+        legend_handles = [
+            Line2D([0], [0], color=colors_lst[2], linestyle=line_style, marker="o",
+                   label=r"$F_{x}$"),
+            Line2D([0], [0], color=colors_lst[1], linestyle=line_style, marker="o",
+                   label=r"$F_{y}$"),
+        ]
+        ax_force.legend(handles=legend_handles, loc="best", fontsize=9)
+
+        if upto > 0:
+            ax_update.plot(t_csv[:upto], upd_x[:upto], color=colors_lst[2], marker="o",
+                           label=r"$x$ update")
+            ax_update.plot(t_csv[:upto], upd_y[:upto], color=colors_lst[1], marker="o",
+                           label=r"$y$ update")
+            ax_update_angle.plot(t_csv[:upto], upd_angle[:upto], color=red, marker="o",
+                                 label=r"$\theta$ update")
+            if plot_idx >= len(t_csv) - 1:
+                ax_update.plot(t_csv[-1], upd_x[-1], color=colors_lst[2], marker="o",
+                              markersize=10, linestyle="None")
+                ax_update.plot(t_csv[-1], upd_y[-1], color=colors_lst[1], marker="o",
+                              markersize=10, linestyle="None")
+                ax_update_angle.plot(t_csv[-1], upd_angle[-1], color=red, marker="o",
+                                     markersize=10, linestyle="None")
+        if desired_position is not None:
+            t_des, x_des, y_des, angle_des = desired_position
+            ax_update.axhline(x_des[-1], color=colors_lst[2], linestyle="--", linewidth=2.0)
+            ax_update.axhline(y_des[-1], color=colors_lst[1], linestyle="--", linewidth=2.0)
+            ax_update_angle.axhline(angle_des[-1], color=red, linestyle="--", linewidth=2.0)
+        ax_update.set_xlim(x_lims)
+        ax_update.set_ylim(update_lims["position"])
+        ax_update_angle.set_ylim(update_lims["angle"])
+        ax_update.set_xlabel("step" if final_time_csv is not None else "CSV sample", fontsize=10)
+        ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=10)
+        ax_update_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=10)
+        update_handles = [
+            Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$ update"),
+            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$ update"),
+            Line2D([0], [0], color=red, linestyle="-", marker="o", label=r"$\theta$ update"),
+        ]
+        if desired_position is not None:
+            update_handles.extend([
+                Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
+                Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
+                Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des."),
+            ])
+        ax_update.legend(handles=update_handles, loc="best", ncol=3, fontsize=8)
+
+        for ax in (ax_force, ax_update):
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            ax.tick_params(labelsize=8)
+        ax_update_angle.tick_params(labelsize=8)
+
+        fig.canvas.draw()
+        rgba = np.asarray(fig.canvas.buffer_rgba())
+        return rgba[:, :, :3].copy()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    writer = None
+    input_frame_idx = 0
+    last_frame_bgr = None
+
+    try:
+        while True:
+            ok, frame_bgr = cap.read()
+            if not ok:
+                break
+            last_frame_bgr = frame_bgr
+            if input_frame_idx % sample_every != 0:
+                input_frame_idx += 1
+                continue
+
+            video_time_s = input_frame_idx / input_fps
+            plot_idx = plot_index_for_video_time(video_time_s)
+            frame_rgb = draw_frame(frame_bgr, plot_idx)
+            height, width = frame_rgb.shape[:2]
+            if writer is None:
+                fourcc = cv2.VideoWriter_fourcc(*("mp4v" if output_path.suffix.lower() == ".mp4" else "XVID"))
+                writer = cv2.VideoWriter(str(output_path), fourcc, video_writer_fps(output_path, fps), (width, height))
+                if not writer.isOpened():
+                    raise RuntimeError(f"Could not open video writer for {output_path}.")
+            writer.write(cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR))
+            input_frame_idx += 1
+
+        if writer is None:
+            raise RuntimeError(f"No frames were read from {video_path}.")
+        if last_frame_bgr is not None:
+            final_rgb = draw_frame(last_frame_bgr, len(t_csv) - 1)
+            final_bgr = cv2.cvtColor(final_rgb, cv2.COLOR_RGB2BGR)
+            for _ in range(max(1, int(round(3 * fps)))):
+                writer.write(final_bgr)
+    finally:
+        cap.release()
+        if writer is not None:
+            writer.release()
+        plt.close(fig)
+
+    return output_path
+
+
 def training_force_data_and_vid(
     training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining",
     csv_file_path: Optional[Union[str, Path]] = None,
@@ -547,7 +924,7 @@ def training_force_data_and_vid(
     mod: str = "summary",
     final_t: Optional[int] = None,
     fps: int = 2,
-    dpi: int = 130,
+    dpi: int = 180,
 ) -> List[Path]:
     """
     Create video(s) with the training image on the left and CSV plots up to the
@@ -646,54 +1023,20 @@ def training_force_data_and_vid(
             stacked[row, :len(arr)] = arr
         return stacked
 
-    def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
-        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
-        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
-        if not finite_values:
-            return -1.0, 1.0
-        combined = np.concatenate(finite_values)
-        lim_min = float(np.min(combined))
-        lim_max = float(np.max(combined))
-        delta = lim_max - lim_min
-        if delta <= 0:
-            pad = max(abs(lim_min) * pad_fraction, 1.0)
-            return lim_min - pad, lim_max + pad
-        return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
-
-    def centered_lims(center_values: NDArray[np.float64], values: List[NDArray[np.float64]],
-                      pad_fraction: float = 0.08) -> Tuple[float, float]:
-        center_arr = np.asarray(center_values, dtype=float).reshape(-1)
-        center_arr = center_arr[np.isfinite(center_arr)]
-        if len(center_arr) == 0:
-            return padded_lims(values, pad_fraction)
-        center = float(np.mean(center_arr))
-        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
-        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
-        if not finite_values:
-            return center - 1.0, center + 1.0
-        combined = np.concatenate(finite_values)
-        half_range = float(np.max(np.abs(combined - center)))
-        if half_range <= 0:
-            half_range = max(abs(center) * pad_fraction, 1.0)
-        else:
-            half_range *= 1.0 + pad_fraction
-        return center - half_range, center + half_range
-
     def build_axis_lims(df_full: pd.DataFrame) -> dict:
         t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
         measured_desired_cols = [col for col in ["F_x_meas", "F_y_meas", "F_x_des", "F_y_des"] if col in df_full.columns]
         update_cols = ["F_x_update", "F_y_update"]
+        update_lims = update_position_angle_lims(
+            df_full["upd_x_tip"].to_numpy(dtype=float),
+            df_full["upd_y_tip"].to_numpy(dtype=float),
+            df_full["upd_tip_angle"].to_numpy(dtype=float),
+        )
 
         lims = {
-            "x": (float(t_full[0] - 0.25), float(t_full[-1] + 0.25)),
-            "position": padded_lims([
-                df_full["upd_x_tip"].to_numpy(dtype=float),
-                df_full["upd_y_tip"].to_numpy(dtype=float),
-            ]),
-            "angle": centered_lims(
-                df_full["upd_tip_angle"].to_numpy(dtype=float)[-1:],
-                [df_full["upd_tip_angle"].to_numpy(dtype=float)],
-            ),
+            "x": time_step_lims(t_full),
+            "position": update_lims["position"],
+            "angle": update_lims["angle"],
             "measured_desired_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in measured_desired_cols]),
             "update_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in update_cols]),
             "loss": padded_lims([
@@ -826,7 +1169,7 @@ def training_force_data_and_vid(
         if has_buckle:
             height_ratios.append(0.75)
         n_plot_rows = len(height_ratios)
-        fig = plt.figure(figsize=(12, 6.6), constrained_layout=True)
+        fig = plt.figure(figsize=(12, 6.6), dpi=dpi, constrained_layout=True)
 
         frames_dir = out_path.with_name(f"{out_path.stem}_frames")
         frames_dir.mkdir(parents=True, exist_ok=True)
@@ -872,7 +1215,7 @@ def training_force_data_and_vid(
             frame_rgb = draw_frame(0)
             height, width = frame_rgb.shape[:2]
             fourcc = cv2.VideoWriter_fourcc(*("mp4v" if out_path.suffix.lower() == ".mp4" else "XVID"))
-            writer = cv2.VideoWriter(str(out_path), fourcc, fps, (width, height))
+            writer = cv2.VideoWriter(str(out_path), fourcc, video_writer_fps(out_path, fps), (width, height))
             if not writer.isOpened():
                 raise RuntimeError(f"Could not open video writer for {out_path}.")
             try:
@@ -899,7 +1242,7 @@ def training_pos_data_and_vid(
     infer_image_sequence: bool = False,
     final_t: Optional[int] = None,
     fps: int = 2,
-    dpi: int = 130,
+    dpi: int = 180,
 ) -> List[Path]:
     """
     Create position-training video(s) from desired/measured/update state images.
@@ -1016,43 +1359,10 @@ def training_pos_data_and_vid(
             raise ValueError(f"No rows available to plot in {csv_path} after applying final_t.")
         return df.reset_index(drop=True)
 
-    def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
-        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
-        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
-        if not finite_values:
-            return -1.0, 1.0
-        combined = np.concatenate(finite_values)
-        lim_min = float(np.min(combined))
-        lim_max = float(np.max(combined))
-        delta = lim_max - lim_min
-        if delta <= 0:
-            pad = max(abs(lim_min) * pad_fraction, 1.0)
-            return lim_min - pad, lim_max + pad
-        return lim_min - delta * pad_fraction, lim_max + delta * pad_fraction
-
-    def centered_lims(center_values: NDArray[np.float64], values: List[NDArray[np.float64]],
-                      pad_fraction: float = 0.08) -> Tuple[float, float]:
-        center_arr = np.asarray(center_values, dtype=float).reshape(-1)
-        center_arr = center_arr[np.isfinite(center_arr)]
-        if len(center_arr) == 0:
-            return padded_lims(values, pad_fraction)
-        center = float(np.mean(center_arr))
-        finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
-        finite_values = [value[np.isfinite(value)] for value in finite_values if np.any(np.isfinite(value))]
-        if not finite_values:
-            return center - 1.0, center + 1.0
-        combined = np.concatenate(finite_values)
-        half_range = float(np.max(np.abs(combined - center)))
-        if half_range <= 0:
-            half_range = max(abs(center) * pad_fraction, 1.0)
-        else:
-            half_range *= 1.0 + pad_fraction
-        return center - half_range, center + half_range
-
     def build_axis_lims(df_full: pd.DataFrame) -> dict:
         t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
         return {
-            "x": (float(t_full[0] - 0.25), float(t_full[-1] + 0.25)),
+            "x": time_step_lims(t_full),
             "measured_desired_position": padded_lims([
                 df_full["x_rest_meas"].to_numpy(dtype=float),
                 df_full["y_rest_meas"].to_numpy(dtype=float),
@@ -1088,28 +1398,41 @@ def training_pos_data_and_vid(
 
         ax_meas_des = axes[0]
         ax_meas_des_angle = ax_meas_des.twinx()
-        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2])
-        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1])
-        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red)
-        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--")
-        ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--")
-        ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--")
+        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2],
+                         marker="o", markerfacecolor=colors_lst[2], markeredgecolor=colors_lst[2])
+        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1],
+                         marker="o", markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1])
+        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red,
+                               marker="o", markerfacecolor=red, markeredgecolor=red)
+        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--",
+                         marker="o", markerfacecolor="none", markeredgecolor=colors_lst[2])
+        ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--",
+                         marker="o", markerfacecolor="none", markeredgecolor=colors_lst[1])
+        ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--",
+                               marker="o", markerfacecolor="none", markeredgecolor=red)
         ax_meas_des.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
         ax_meas_des_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
         ax_meas_des.set_ylim(axis_lims["measured_desired_position"])
         ax_meas_des_angle.set_ylim(axis_lims["measured_desired_angle"])
         meas_des_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle="-", label=r"$x$ meas."),
-            Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
-            Line2D([0], [0], color=colors_lst[1], linestyle="-", label=r"$y$ meas."),
-            Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
-            Line2D([0], [0], color=red, linestyle="-", label=r"$\theta$ meas."),
-            Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des.")
+            Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o",
+                   markerfacecolor=colors_lst[2], markeredgecolor=colors_lst[2], label=r"$x$ meas."),
+            Line2D([0], [0], color=colors_lst[2], linestyle="--", marker="o",
+                   markerfacecolor="none", markeredgecolor=colors_lst[2], label=r"$x$ des."),
+            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o",
+                   markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1], label=r"$y$ meas."),
+            Line2D([0], [0], color=colors_lst[1], linestyle="--", marker="o",
+                   markerfacecolor="none", markeredgecolor=colors_lst[1], label=r"$y$ des."),
+            Line2D([0], [0], color=red, linestyle="-", marker="o",
+                   markerfacecolor=red, markeredgecolor=red, label=r"$\theta$ meas."),
+            Line2D([0], [0], color=red, linestyle="--", marker="o",
+                   markerfacecolor="none", markeredgecolor=red, label=r"$\theta$ des.")
         ]
         ax_meas_des.legend(handles=meas_des_handles, loc="best", ncol=3, fontsize=8)
 
         ax_loss = axes[1]
-        ax_loss.plot(t, df["loss_MSE"].to_numpy(dtype=float), color=colors_lst[0], label=r"$\mathcal{L}$")
+        ax_loss.plot(t, df["loss_MSE"].to_numpy(dtype=float), color=colors_lst[0], marker="o",
+                     label=r"$\mathcal{L}$")
         ax_loss.plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
         ax_loss.set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
         ax_loss.set_ylim(axis_lims["loss"])
@@ -1117,9 +1440,12 @@ def training_pos_data_and_vid(
 
         ax_update = axes[2]
         ax_update_angle = ax_update.twinx()
-        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], label=r"$x$ update")
-        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], label=r"$y$ update")
-        ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, label=r"$\theta$ update")
+        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
+                       label=r"$x$ update")
+        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
+                       label=r"$y$ update")
+        ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o",
+                             label=r"$\theta$ update")
         ax_update.set_xlabel("t", fontsize=font_size)
         ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
         ax_update_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
@@ -1174,9 +1500,12 @@ def training_pos_data_and_vid(
             print(f"{csv_path.name}: using {frame_count} frames from {original_frame_count} image pairs and {len(df)} CSV rows.")
 
         axis_lims = build_axis_lims(df)
-        fig = plt.figure(figsize=(13.2, 7.2), constrained_layout=True)
+        fig = plt.figure(figsize=(13.2, 7.2), dpi=dpi, constrained_layout=True)
+        frames_dir = out_path.with_name(f"{out_path.stem}_frames")
+        frames_dir.mkdir(parents=True, exist_ok=True)
+        frame_t_values = df["t"].to_numpy(dtype=int) if "t" in df.columns else np.arange(1, frame_count + 1, dtype=int)
 
-        def draw_frame(frame: int) -> NDArray[np.uint8]:
+        def draw_frame(frame: int, jpg_path: Optional[Path] = None) -> NDArray[np.uint8]:
             fig.clear()
             grid = fig.add_gridspec(3, 2, width_ratios=[1.65, 1.0], height_ratios=[1, 1, 1])
             ax_meas = fig.add_subplot(grid[0, 0])
@@ -1194,6 +1523,8 @@ def training_pos_data_and_vid(
             show_image(ax_des, des_image, "desired")
             plot_position_snapshot(fig, plot_axes, df, frame, axis_lims)
             fig.canvas.draw()
+            if jpg_path is not None:
+                fig.savefig(jpg_path, dpi=max(dpi, 300), bbox_inches="tight")
             rgba = np.asarray(fig.canvas.buffer_rgba())
             return rgba[:, :, :3].copy()
 
@@ -1202,6 +1533,8 @@ def training_pos_data_and_vid(
             from PIL import Image
 
             pil_frames = [Image.fromarray(draw_frame(frame)) for frame in range(frame_count)]
+            for frame in range(frame_count):
+                draw_frame(frame, frames_dir / f"t_{int(frame_t_values[frame]):03d}.jpg")
             durations = [int(1000 / fps)] * frame_count
             durations[-1] = 3000
             pil_frames[0].save(
@@ -1220,12 +1553,13 @@ def training_pos_data_and_vid(
             frame_rgb = draw_frame(0)
             height, width = frame_rgb.shape[:2]
             fourcc = cv2.VideoWriter_fourcc(*("mp4v" if out_path.suffix.lower() == ".mp4" else "XVID"))
-            writer = cv2.VideoWriter(str(out_path), fourcc, fps, (width, height))
+            writer = cv2.VideoWriter(str(out_path), fourcc, video_writer_fps(out_path, fps), (width, height))
             if not writer.isOpened():
                 raise RuntimeError(f"Could not open video writer for {out_path}.")
             try:
                 for frame in range(frame_count):
-                    frame_rgb = draw_frame(frame)
+                    jpg_path = frames_dir / f"t_{int(frame_t_values[frame]):03d}.jpg"
+                    frame_rgb = draw_frame(frame, jpg_path)
                     frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                     repeats = max(1, int(round(3 * fps))) if frame == frame_count - 1 else 1
                     for _ in range(repeats):

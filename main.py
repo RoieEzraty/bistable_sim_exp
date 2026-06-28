@@ -1,4 +1,4 @@
-# %% Imports
+# %% ====== Imports ======
 
 import importlib
 import numpy as np
@@ -7,7 +7,7 @@ import plot_funcs
 
 importlib.reload(plot_funcs)
 
-# %% Compare
+# %% ====== Compare
 
 final_t = None
 save = True
@@ -25,7 +25,7 @@ sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(
 
 plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save)
 
-# %% Single
+# %% ====== Single ======
 
 final_t = None
 save = True
@@ -33,7 +33,7 @@ save = True
 file_path = r"..\Bistable shape acquisition jax\Training\June15_H10_pos\1stAndLast\0010100001to1010100000.csv"
 plot_funcs.plot_sim_or_exp(file_path, mod="pos", final_t=final_t, save=save)
 
-# %% Training through force video
+# %% ====== Training through force video ======
 
 importlib.reload(plot_funcs)
 csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
@@ -41,15 +41,15 @@ images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\tra
 plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
 
 
-# %% Training through pos video
+# %% ====== Training through pos video ======
 
 importlib.reload(plot_funcs)
 
-# csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June23_UpdateFromSimPos\0001to1000\0001to1000.csv"
-# pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June23_UpdateFromSimPos\0001to1000\pics"
-# plot_funcs.training_pos_data_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
+csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
+pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
+plot_funcs.training_pos_data_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
 
-# %% Force along trajectory
+# %% ====== Force along trajectory ======
 
 importlib.reload(plot_funcs)
 
@@ -63,3 +63,20 @@ vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\
 plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=4.0,
                                  final_time_s=12.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
                                  save=True)
+
+
+# %% ====== Force during zero Force ======
+importlib.reload(plot_funcs)
+
+csv_file_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\1000_des_reach_zero.csv"
+vid_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\1000zeroForce.mp4"
+
+plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_vid=3.0,
+                                        final_time_vid=63.0, final_time_csv=10, fps=5, mean_line_mode="des")
+
+# csv_file_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001_meas_reach_zero.csv"
+# vid_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\0001zeroForce.mp4"
+
+# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=4.0,
+#                                         final_time_vid=12.0, final_time_csv=3, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
+# %%
