@@ -734,10 +734,10 @@ def plot_force_during_zero_force(
             t_csv, fx, fy = t_csv[:final_count], fx[:final_count], fy[:final_count]
             upd_x, upd_y, upd_angle = upd_x[:final_count], upd_y[:final_count], upd_angle[:final_count]
 
-    desired_position_source = Path(csv_file_path_des) if csv_file_path_des is not None else None
-    if desired_position_source is None and mean_line_mode == "des":
-        desired_position_source = csv_path
-    desired_position = read_desired_position_data(desired_position_source) if desired_position_source is not None else None
+    desired_position = (
+        read_desired_position_data(Path(csv_file_path_des))
+        if csv_file_path_des is not None else None
+    )
 
     line_style = ":" if mean_line_mode == "des" else "-"
     colors_lst, red, custom_cmap = colors.color_scheme()
@@ -851,17 +851,17 @@ def plot_force_during_zero_force(
         ax_update.set_xlabel("step" if final_time_csv is not None else "CSV sample", fontsize=10)
         ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=10)
         ax_update_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=10)
-        update_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$ update"),
-            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$ update"),
-            Line2D([0], [0], color=red, linestyle="-", marker="o", label=r"$\theta$ update"),
-        ]
         if desired_position is not None:
-            update_handles.extend([
-                Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
-                Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
-                Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des."),
-            ])
+            update_handles = [Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$"),
+                            Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$"),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
+                            Line2D([0], [0], color=red, linestyle="-", marker="o", label=r"$\theta$"),
+                            Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des.")]
+        else:
+            update_handles = [Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$"),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$"),
+                            Line2D([0], [0], color=red, linestyle="-", marker="o", label=r"$\theta$")]
         ax_update.legend(handles=update_handles, loc="best", ncol=3, fontsize=8)
 
         for ax in (ax_force, ax_update):

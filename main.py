@@ -53,10 +53,17 @@ plot_funcs.training_pos_data_and_vid(csv_file_path=csv_file_path, pics_dir=pics_
 
 importlib.reload(plot_funcs)
 
-# csv_file_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_fromSims.csv"
-# vid_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000.mp4"
-# plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_s=3.0,
-#                                  final_time_s=11.0, fps=5, mean_line_mode = "des", save=True)
+csv_file_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_fromSims.csv"
+vid_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000.mp4"
+plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_s=3.0,
+                                 final_time_s=11.0, fps=5, mean_line_mode = "des", save=True)
+
+
+csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0001_fromSims.csv"
+vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0001.mp4"
+plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=9.0,
+                                 final_time_s=18.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
+                                 save=True)
 
 csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_measuredEnd.csv"
 vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000_meas.mp4"
@@ -71,12 +78,12 @@ importlib.reload(plot_funcs)
 csv_file_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\1000_des_reach_zero.csv"
 vid_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\1000zeroForce.mp4"
 
-plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_vid=3.0,
-                                        final_time_vid=63.0, final_time_csv=10, fps=5, mean_line_mode="des")
+# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_vid=3.0,
+#                                         final_time_vid=63.0, final_time_csv=10, fps=5, mean_line_mode="des")
 
-# csv_file_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001_meas_reach_zero.csv"
-# vid_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\0001zeroForce.mp4"
+csv_file_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\1001_meas_reach_zero.csv"
+vid_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\1001zeroForce.mp4"
 
-# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=4.0,
-#                                         final_time_vid=12.0, final_time_csv=3, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
+plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=10.0,
+                                        final_time_vid=83.0, final_time_csv=10, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
 # %%
