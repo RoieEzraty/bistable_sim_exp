@@ -5,25 +5,40 @@ import numpy as np
 
 import plot_funcs
 
+file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
+
 importlib.reload(plot_funcs)
 
 # %% ====== Compare
 
-final_t = None
+final_t = 25
 save = True
+mod = "force"
+share_t = False
 
-exp_file_prelim = "..\\Meca500\\data\\training\\\\May28_UpdateFromSim\\2ndTip\\"
-sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\stiffk\\1stEnd\\"
-# sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
 
-init_buckle = "0001"
-desired_buckle = "0000"
 
+# # pos 0001->1000
+# init_buckle = "0001"
+# desired_buckle = "1000"
+# exp_file_prelim = r"..\\Meca500\\data\\training\\June21_fromPos\\{}to{}\\".format(init_buckle, desired_buckle)
+# sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\\May17Pos_symmetrical_delta\\"
+# exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
+# sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}_extended.csv".format(init_buckle, desired_buckle)
+
+# # force 0011->1000
+init_buckle = "0011"
+desired_buckle = "1000"
+exp_file_prelim = r"..\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\"
+sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\June6_May22singleHinge2ndEnd_May27shortArcTraj\\stiffk\\1stEnd\\"
 exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
-# exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
 sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(init_buckle, desired_buckle)
 
-plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save)
+# sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
+# exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
+
+
+plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
 
 # %% ====== Single ======
 
@@ -55,8 +70,8 @@ importlib.reload(plot_funcs)
 
 csv_file_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_fromSims.csv"
 vid_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000.mp4"
-plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_s=3.0,
-                                 final_time_s=11.0, fps=5, mean_line_mode = "des", save=True)
+# plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_s=3.0,
+#                                  final_time_s=11.0, fps=5, mean_line_mode = "des", save=True)
 
 
 csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0001_fromSims.csv"
@@ -68,8 +83,36 @@ plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_
 csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_measuredEnd.csv"
 vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000_meas.mp4"
 plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=4.0,
-                                 final_time_s=12.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
+                                 final_time_s=13.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
                                  save=True)
+
+# %% ====== Force along trajectory: graph only ======
+importlib.reload(plot_funcs)
+# Choose the experiment and simulation CSV files here.
+csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\June4_PredeterMay27ShortArcZeroDeg\1stEnd\0000.csv"
+csv_file_path_sim = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\May27\short_arc\May24Chain_1stEnd\buckle=0000.csv"
+plot_funcs.plot_force_along_traj(
+    csv_file_path=csv_file_path_exp,
+    csv_file_path_sim=csv_file_path_sim,
+    graph_only=True,
+    experiment_error=10.0,
+    save=True,
+    scale_y=True
+)
+
+csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\Feb26\0001\buckle=0001_2.csv"
+csv_file_path_sim = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\Mar2\L=pt047 tip 2 mm left\0001\L=0.047_buckle0001.csv"
+plot_funcs.plot_force_along_traj(
+    csv_file_path=csv_file_path_exp,
+    csv_file_path_sim=csv_file_path_sim,
+    graph_only=True,
+    experiment_error=10.0,
+    save=True,
+    scale_y=False
+)
+
+
+
 
 
 # %% ====== Force during zero Force ======

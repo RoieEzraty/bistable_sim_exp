@@ -100,9 +100,10 @@ def crop_frame_edges(
 
 
 def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
-                                  final_t: Optional[int] = None, save: bool = False) -> None:
+                                  final_t: Optional[int] = None, save: bool = False,
+                                  mod: Optional[str] = None, share_t: bool = True) -> None:
     """
-    Plot experimental and simulated training for comparison of a full chain simulation.
+    Compare experimental and simulated training in force mode or ``mod="pos"``.
 
     Parameters
     ----------
@@ -137,108 +138,155 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
     font_size = 14
 
+    position_mode = (mod or "").lower() == "pos"
+
     # read experimental dataframe and extract sizes
     exp_df = pd.read_csv(exp_file_path)
 
-    F_exp_meas = np.vstack([exp_df["F_x_meas"].to_numpy(dtype=float),
-                            exp_df["F_y_meas"].to_numpy(dtype=float)])  # shape (2, T)
-    F_exp_des = np.vstack([exp_df["F_x_des"].to_numpy(dtype=float),
-                           exp_df["F_y_des"].to_numpy(dtype=float)])  # shape (2, T)
     loss_MSE_exp = exp_df["loss_MSE"].to_numpy(dtype=float)
-    if "F_err" in exp_df.columns:  # optional force error margin from file
-        F_err = np.vstack([exp_df["F_err"].to_numpy(dtype=float),
-                           exp_df["F_err"].to_numpy(dtype=float)])  # same error for x and y
-    else:
-        F_err = None
 
     # read simulation dataframe
     sim_df = pd.read_csv(sim_file_path)
 
-    F_sim_meas = np.vstack([sim_df["Fx_meas"].to_numpy(dtype=float),
-                            sim_df["Fy_meas"].to_numpy(dtype=float)])  # shape (2, T)
-    F_sim_des = np.vstack([sim_df["Fx_des"].to_numpy(dtype=float),
-                           sim_df["Fy_des"].to_numpy(dtype=float)])  # shape (2, T)
     loss_MSE_sim = sim_df["loss_MSE"].to_numpy(dtype=float)
 
+    if not position_mode:
+        F_exp_meas = np.vstack([exp_df["F_x_meas"].to_numpy(dtype=float),
+                                exp_df["F_y_meas"].to_numpy(dtype=float)])
+        F_exp_des = np.vstack([exp_df["F_x_des"].to_numpy(dtype=float),
+                               exp_df["F_y_des"].to_numpy(dtype=float)])
+        F_sim_meas = np.vstack([sim_df["Fx_meas"].to_numpy(dtype=float),
+                                sim_df["Fy_meas"].to_numpy(dtype=float)])
+        F_sim_des = np.vstack([sim_df["Fx_des"].to_numpy(dtype=float),
+                               sim_df["Fy_des"].to_numpy(dtype=float)])
+        F_err = np.vstack([exp_df["F_err"].to_numpy(dtype=float)] * 2) if "F_err" in exp_df.columns else None
+
+    update_cols = ["upd_x_tip", "upd_y_tip", "upd_tip_angle"]
+    missing_update_cols = [col for col in update_cols if col not in exp_df.columns or col not in sim_df.columns]
+    if missing_update_cols:
+        raise KeyError(f"Missing update columns in experiment or simulation data: {missing_update_cols}")
+
+    if position_mode:
+        pose_cols = [
+            ["x_rest_meas", "y_rest_meas", "theta_rest_meas",
+             "x_rest_des", "y_rest_des", "theta_rest_des"],
+            ["x_meas_tip", "y_meas_tip", "meas_tip_angle",
+             "x_des_tip", "y_des_tip", "des_tip_angle"],
+        ]
+        missing_pose_cols = [col for df, cols in zip((exp_df, sim_df), pose_cols)
+                             for col in cols if col not in df.columns]
+        if missing_pose_cols:
+            raise KeyError(f"Missing position columns: {missing_pose_cols}")
+
     # time steps
-    T = min(int(F_sim_meas.shape[1]), int(F_exp_meas.shape[1]))
-    if final_t is None:
-        final_t = T-1
-    t = np.arange(T-1, dtype=int)
+    Ts = [len(exp_df), len(sim_df)]
+    if final_t is not None:
+        Ts = [min(T, final_t + 1) for T in Ts]
+    if share_t:
+        Ts = [min(Ts)] * 2
+    if min(Ts) < 2:
+        raise ValueError("At least two training rows are required to plot updates.")
+    times = [np.arange(1, T, dtype=int) for T in Ts]
 
     # limits
-    force_max = np.max([np.max(F_exp_meas), np.max(F_exp_des), np.max(F_sim_meas), np.max(F_sim_des)])
-    force_min = np.min([np.min(F_exp_meas), np.min(F_exp_des), np.min(F_sim_meas), np.min(F_sim_des)])
-    delta_force = force_max-force_min
-    force_lims = [force_min-delta_force*0.15, force_max+delta_force*0.05]
-    loss_max = np.max([np.max(loss_MSE_exp), np.max(loss_MSE_sim)])
-    loss_min = np.min([np.min(loss_MSE_exp), np.min(loss_MSE_sim)])
+    if not position_mode:
+        force_lims = padded_lims([F_exp_meas[:, :Ts[0]], F_exp_des[:, :Ts[0]],
+                                  F_sim_meas[:, :Ts[1]], F_sim_des[:, :Ts[1]]])
+    loss_max = np.max([np.max(loss_MSE_exp[:Ts[0]]), np.max(loss_MSE_sim[:Ts[1]])])
+    loss_min = np.min([np.min(loss_MSE_exp[:Ts[0]]), np.min(loss_MSE_sim[:Ts[1]])])
     delta_loss = loss_max - loss_min
-    loss_lims = [loss_min-delta_loss*0.1, loss_max-delta_loss*0.05]
+    loss_lims = [loss_min-delta_loss*0.1, loss_max+delta_loss*0.05]
 
-    fig, axs = plt.subplots(nrows=2, ncols=2, sharex="col", sharey="row", figsize=(8, 3),
-                            gridspec_kw={"height_ratios": [1.4, 1]})
+    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col", sharey="row", figsize=(8, 5),
+                            gridspec_kw={"height_ratios": [1.4, 1.2, 1]})
 
-    # ====== top: forces ======
+    # ====== top: measured and desired pose or force ======
     markersize = 10.0
+    if position_mode:
+        for col, (df, cols, t, T) in enumerate(zip(
+                (sim_df, exp_df), pose_cols[::-1], times[::-1], Ts[::-1])):
+            ax_angle = axs[0, col].twinx()
+            theta_meas = df[cols[2]].to_numpy(dtype=float)[1:T]
+            theta_des = df[cols[5]].to_numpy(dtype=float)[1:T]
+            for meas, des, color, label in ((cols[0], cols[3], colors_lst[1], "x"),
+                                            (cols[1], cols[4], colors_lst[2], "y")):
+                axs[0, col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
+                                 color=color, label=rf"${label}$ meas.")
+                axs[0, col].plot(t, df[des].to_numpy(dtype=float)[1:T],
+                                 color=color, linestyle=":", label=rf"${label}$ des.")
+            ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$ meas.")
+            ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":", label=r"$\theta$ des.")
+            ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
+            if col == 0:
+                axs[0, col].set_ylabel(r"$tip\left[mm\right]$", fontsize=font_size)
+            if col == 1:
+                ax_angle.set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
+            lines = axs[0, col].get_lines() + ax_angle.get_lines()
+            if col == 0:
+                axs[0, col].legend(lines, [line.get_label() for line in lines], ncol=3, fontsize=9)
+    else:
+        for col, (meas, des, t, T) in enumerate(zip(
+                (F_sim_meas, F_exp_meas), (F_sim_des, F_exp_des), times[::-1], Ts[::-1])):
+            style = {"marker": ".", "linestyle": "None", "markersize": markersize} if col == 1 else {}
+            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[1], label=r"$F_x$ meas.", **style)
+            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[1], linestyle=":", label=r"$F_x$ des.")
+            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[2], label=r"$F_y$ meas.", **style)
+            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[2], linestyle=":", label=r"$F_y$ des.")
+            axs[0, col].set_ylim(force_lims)
+            if col == 0:
+                axs[0, col].legend(ncol=2, fontsize=9)
+        axs[0, 0].set_ylabel(r"$F\left[mN\right]$", fontsize=font_size)
+        if F_err is not None:
+            for i, color in enumerate(colors_lst[1:3]):
+                axs[0, 1].fill_between(times[0], F_exp_meas[i, 1:Ts[0]] - F_err[i, 1:Ts[0]],
+                                       F_exp_meas[i, 1:Ts[0]] + F_err[i, 1:Ts[0]],
+                                       color=color, alpha=0.5, linewidth=0)
 
-    # left panel - experiment
-    axs[0, 0].plot(F_exp_meas[0, 1:], marker=".", linestyle="None", markersize=markersize,
-                   color=colors_lst[2], label=r"$F_x$")
-    axs[0, 0].plot(t, F_exp_des[0, 1:], marker="None", linestyle="--", markersize=markersize,
-                   color=colors_lst[2], label=r"$\hat{F}_x$")
-
-    axs[0, 0].plot(F_exp_meas[1, 1:], marker=".", linestyle="None", markersize=markersize,
-                   color=colors_lst[1], label=r"$F_y$")
-    axs[0, 0].plot(t, F_exp_des[1, 1:], marker="None", linestyle="--", markersize=markersize,
-                   color=colors_lst[1], label=r"$\hat{F}_y$")
-
-    if F_err is not None:
-        axs[0, 0].fill_between(t, F_exp_meas[0, 1:] - F_err[0, 1:],
-                               F_exp_meas[0, 1:] + F_err[0, 1:],
-                               color=colors_lst[2], alpha=0.5, linewidth=0)
-
-        axs[0, 0].fill_between(t, F_exp_meas[1, 1:] - F_err[1, 1:],
-                               F_exp_meas[1, 1:] + F_err[1, 1:],
-                               color=colors_lst[1], alpha=0.5, linewidth=0)
-
-    # shared axis
-    axs[0, 0].set_ylabel(r"$F\left[mN\right]$", fontsize=font_size)
-    axs[0, 0].set_ylim(force_lims)
-
-    # right panel - simulation
-    axs[0, 1].plot(F_sim_meas[0, 1:], color=colors_lst[2], label=r"$F_x$")
-    axs[0, 1].plot(F_sim_des[0, 1:], color=colors_lst[2], linestyle="--", label=r"$\hat{F}_x$")
-    axs[0, 1].plot(F_sim_meas[1, 1:], color=colors_lst[1], label=r"$F_y$")
-    axs[0, 1].plot(F_sim_des[1, 1:], color=colors_lst[1], linestyle="--", label=r"$\hat{F}_y$")
+    # ====== middle: update tip pose ======
+    angle_axes = []
+    for col, (df, t, T) in enumerate(zip((sim_df, exp_df), times[::-1], Ts[::-1])):
+        ax_angle = axs[1, col].twinx()
+        if angle_axes:
+            ax_angle.sharey(angle_axes[0])
+        angle_axes.append(ax_angle)
+        axs[1, col].plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
+                         color=colors_lst[1], label=r"$tip_x^{\,!}$")
+        axs[1, col].plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
+                         color=colors_lst[2], label=r"$tip_y^{\,!}$")
+        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T],
+                      color=colors_lst[3], label=r"$\theta^{\,!}$")
+        if col == 0:
+            axs[1, col].set_ylabel(r"$tip^{\,!}\left[mm\right]$", fontsize=font_size)
+        if col == 1:
+            ax_angle.set_ylabel(r"$\theta^{\,!}\left[\degree\right]$", fontsize=font_size)
+        lines = axs[1, col].get_lines() + ax_angle.get_lines()
+        if col == 0:
+            axs[1, col].legend(lines, [line.get_label() for line in lines], ncol=2, fontsize=9)
 
     # ====== bottom: MSE loss ======
-    # left panel - experiment
-    axs[1, 0].plot(loss_MSE_exp[1:], marker=".", linestyle="None", markersize=markersize, color=colors_lst[0], 
-                   label=r"$\mathcal{L}$")
-    axs[1, 0].plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
+    # left panel - simulation
+    axs[2, 0].plot(times[1], loss_MSE_sim[1:Ts[1]], color=colors_lst[0], label=r"$\mathcal{L}$")
+    axs[2, 0].plot(times[1], np.zeros(len(times[1])), color=colors_lst[0], linestyle="--")
 
-    axs[1, 0].set_xlabel("t", fontsize=font_size)
-    axs[1, 0].set_ylabel("Loss", fontsize=font_size)
-    axs[1, 0].set_ylim(loss_lims)
+    axs[2, 0].set_xlabel("t", fontsize=font_size)
+    axs[2, 0].set_ylabel("Loss", fontsize=font_size)
+    axs[2, 0].set_ylim(loss_lims)
 
-    # right panel - simulation
-    axs[1, 1].plot(loss_MSE_sim[1:], color=colors_lst[0], label=r"$\mathcal{L}$")
-    axs[1, 1].plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
-    axs[1, 1].set_xlabel("t", fontsize=font_size)
+    # right panel - experiment
+    axs[2, 1].plot(times[0], loss_MSE_exp[1:Ts[0]], marker=".", linestyle="None",
+                   markersize=markersize, color=colors_lst[0], label=r"$\mathcal{L}$")
+    axs[2, 1].plot(times[0], np.zeros(len(times[0])), color=colors_lst[0], linestyle="--")
+    axs[2, 1].set_xlabel("t", fontsize=font_size)
 
     # ====== titles ======
-    axs[0, 0].set_title("Experiment", fontsize=font_size)
-    axs[0, 1].set_title("Simulation", fontsize=font_size)
+    axs[0, 0].set_title("Simulation", fontsize=font_size)
+    axs[0, 1].set_title("Experiment", fontsize=font_size)
 
     # ====== legends ======
     legend_kw = dict(loc="best", ncol=2, fontsize=11.5, handlelength=1.2,
                      handletextpad=0.3, columnspacing=0.18, borderpad=0.08,
                      labelspacing=0.08, markerscale=0.8, frameon=True)
-    axs[0, 0].legend(**legend_kw)
-    axs[0, 1].legend(**legend_kw)
-    axs[1, 0].legend(**legend_kw)
-    axs[1, 1].legend(**legend_kw)
+    axs[2, 0].legend(**legend_kw)
 
     # ====== locator + layout ======
     axs[-1, 0].xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -399,7 +447,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
 
 def plot_force_along_traj(
     csv_file_path: Union[str, Path],
-    vid_path: Union[str, Path],
+    vid_path: Optional[Union[str, Path]] = None,
     output_path: Optional[Union[str, Path]] = None,
     initial_time_s: float = 0.0,
     final_time_s: Optional[float] = None,
@@ -410,10 +458,26 @@ def plot_force_along_traj(
     dpi: int = 180,
     video_crop_left_fraction: float = 0.12,
     video_crop_bottom_fraction: float = 0.12,
+    graph_only: bool = False,
+    csv_file_path_sim: Optional[Union[str, Path]] = None,
+    experiment_error: float = 10.0,
+    scale_y: Optional[bool] = False,
+    y_lims: Tuple[float, float] = (-120.0, 350.0),
+    font_size: float = 18,
+    line_width: float = 3.0,
+    marker_size: float = 9.0,
+    errorbar_line_width: float = 2.0,
+    errorbar_capsize: float = 4.0,
 ) -> Path:
     """
-    Create a video with the measured trajectory video on the left and
-    ``F_x``/``F_y`` as a function of ``y_tip`` on the right.
+    Plot ``F_x``/``F_y`` as a function of ``y_tip``.
+
+    By default, create a video with the measured trajectory video on the left.
+    With ``graph_only=True``, create a static 7-by-4 graph without the robot
+    video. In graph-only mode, ``csv_file_path`` is the experiment CSV and
+    ``csv_file_path_sim`` is the simulation CSV. Experiment values are shown as
+    dots with ``experiment_error`` error bars; simulation values are solid
+    lines without error bars.
 
     The force curves start growing at ``initial_time_s`` in the source video and
     finish at ``final_time_s``. Once all trajectory points are shown, mean-force
@@ -423,13 +487,16 @@ def plot_force_along_traj(
     overlaid too.
     """
     csv_path = Path(csv_file_path)
-    video_path = Path(vid_path)
     if output_path is None:
-        output_path = csv_path.with_name(f"{csv_path.stem}_force_along_traj.mp4")
+        output_suffix = ".png" if graph_only else ".mp4"
+        output_path = csv_path.with_name(f"{csv_path.stem}_force_along_traj{output_suffix}")
     output_path = Path(output_path)
 
-    if not save:
+    if not graph_only and not save:
         raise ValueError("plot_force_along_traj creates a video file; call it with save=True.")
+    if not graph_only and vid_path is None:
+        raise ValueError("vid_path is required unless graph_only=True.")
+    video_path = Path(vid_path) if vid_path is not None else None
     mean_line_mode = mean_line_mode.lower()
     if mean_line_mode not in {"des", "meas"}:
         raise ValueError('mean_line_mode must be either "des" or "meas".')
@@ -462,6 +529,59 @@ def plot_force_along_traj(
         )
 
     y, fx, fy = read_force_traj(csv_path)
+
+    if graph_only:
+        if csv_file_path_sim is None:
+            raise ValueError("csv_file_path_sim is required when graph_only=True.")
+        if experiment_error < 0:
+            raise ValueError("experiment_error must be non-negative.")
+
+        y_sim, fx_sim, fy_sim = read_force_traj(Path(csv_file_path_sim))
+        if scale_y:
+            y_sim = y_sim * 1e3
+        colors_lst, _, _ = colors.color_scheme()
+        fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
+
+        errorbar_style = {
+            "fmt": ".",
+            "linestyle": "none",
+            "markersize": marker_size,
+            "elinewidth": errorbar_line_width,
+            "capsize": errorbar_capsize,
+            "capthick": errorbar_line_width,
+        }
+        ax_force.errorbar(
+            y, fx, yerr=experiment_error, color=colors_lst[2],
+            label="_nolegend_", **errorbar_style,
+        )
+        ax_force.errorbar(
+            y, fy, yerr=experiment_error, color=colors_lst[1],
+            label="_nolegend_", **errorbar_style,
+        )
+        ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
+                      label="_nolegend_")
+        ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
+                      label="_nolegend_")
+        ax_force.set_xlabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
+        ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
+        ax_force.tick_params(axis="both", labelsize=font_size)
+        ax_force.set_ylim(y_lims)
+        legend_handles = [
+            Line2D([0], [0], color=colors_lst[2], linewidth=line_width, marker=".",
+                   markersize=marker_size,
+                   label=r"$F_x$"),
+            Line2D([0], [0], color=colors_lst[1], linewidth=line_width, marker=".",
+                   markersize=marker_size,
+                   label=r"$F_y$"),
+        ]
+        ax_force.legend(handles=legend_handles, loc="best", ncol=2, fontsize=font_size)
+
+        if save:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(output_path, dpi=dpi)
+        plt.show()
+        return output_path
+
     fx_mean = float(np.mean(fx))
     fy_mean = float(np.mean(fy))
     des_means = None
@@ -530,8 +650,9 @@ def plot_force_along_traj(
 
         ax_force.set_xlim(x_lims)
         ax_force.set_ylim(force_lims)
-        ax_force.set_xlabel(r"$y_{tip}$")
-        ax_force.set_ylabel(r"$F\,\left[mN\right]$")
+        ax_force.set_xlabel(r"$y_{tip}$", fontsize=font_size)
+        ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
+        ax_force.tick_params(axis="both", labelsize=font_size)
         legend_handles = [
             Line2D([0], [0], color=colors_lst[2], linestyle=mean_linestyle, marker="o",
                    label=rf"$F_{{x}}\ \mathrm{{{'measured' if current_suffix == 'meas' else 'desired'}}}$"),
@@ -545,7 +666,7 @@ def plot_force_along_traj(
                 Line2D([0], [0], color=colors_lst[1], linestyle=":",
                        label=r"$F_{y}\ \mathrm{desired}$"),
             ])
-        ax_force.legend(handles=legend_handles, loc="best", fontsize=9)
+        ax_force.legend(handles=legend_handles, loc="best", fontsize=font_size)
 
         fig.canvas.draw()
         rgba = np.asarray(fig.canvas.buffer_rgba())
