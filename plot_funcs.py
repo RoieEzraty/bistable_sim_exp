@@ -10,6 +10,7 @@ from IPython.display import HTML
 from matplotlib import patches
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.collections import LineCollection
 from matplotlib.lines import Line2D
 from scipy.signal import savgol_filter
 from matplotlib.patches import Ellipse, FancyArrowPatch
@@ -20,6 +21,7 @@ from numpy.typing import NDArray
 from typing import TYPE_CHECKING, Callable, Union, Optional
 
 import colors
+colors_lst, red, custom_cmap = colors.color_scheme()
 
 
 def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
@@ -136,7 +138,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     """
     colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
-    font_size = 14
+    font_size = 16
 
     position_mode = (mod or "").lower() == "pos"
 
@@ -197,102 +199,113 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     delta_loss = loss_max - loss_min
     loss_lims = [loss_min-delta_loss*0.1, loss_max+delta_loss*0.05]
 
-    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col", sharey="row", figsize=(8, 5),
+    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col", sharey="row", figsize=(12, 5),
                             gridspec_kw={"height_ratios": [1.4, 1.2, 1]})
 
     # ====== top: measured and desired pose or force ======
     markersize = 10.0
+    legend_kw = dict(loc="best", fontsize=font_size-3, handlelength=1.0,
+                     handletextpad=0.25, columnspacing=0.45, borderpad=0.2,
+                     labelspacing=0.15, markerscale=0.75, frameon=True)
     if position_mode:
         for col, (df, cols, t, T) in enumerate(zip(
-                (sim_df, exp_df), pose_cols[::-1], times[::-1], Ts[::-1])):
+                (exp_df, sim_df), pose_cols, times, Ts)):
             ax_angle = axs[0, col].twinx()
             theta_meas = df[cols[2]].to_numpy(dtype=float)[1:T]
             theta_des = df[cols[5]].to_numpy(dtype=float)[1:T]
             for meas, des, color, label in ((cols[0], cols[3], colors_lst[1], "x"),
                                             (cols[1], cols[4], colors_lst[2], "y")):
                 axs[0, col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
-                                 color=color, label=rf"${label}$ meas.")
+                                 color=color, label=rf"${label}$ measured")
                 axs[0, col].plot(t, df[des].to_numpy(dtype=float)[1:T],
-                                 color=color, linestyle=":", label=rf"${label}$ des.")
-            ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$ meas.")
-            ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":", label=r"$\theta$ des.")
+                                 color=color, linestyle=":", label=rf"${label}$ desired")
+            ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$ measured")
+            ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":", label=r"$\theta$ desired")
             ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
             if col == 0:
-                axs[0, col].set_ylabel(r"$tip\left[mm\right]$", fontsize=font_size)
+                axs[0, col].set_ylabel(r"$x,\,y\left[mm\right]$", fontsize=font_size)
             if col == 1:
                 ax_angle.set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
             lines = axs[0, col].get_lines() + ax_angle.get_lines()
-            if col == 0:
-                axs[0, col].legend(lines, [line.get_label() for line in lines], ncol=3, fontsize=9)
+            if col == 1:
+                axs[0, col].legend(lines, [line.get_label() for line in lines],
+                                   ncol=3, **legend_kw)
     else:
         for col, (meas, des, t, T) in enumerate(zip(
-                (F_sim_meas, F_exp_meas), (F_sim_des, F_exp_des), times[::-1], Ts[::-1])):
-            style = {"marker": ".", "linestyle": "None", "markersize": markersize} if col == 1 else {}
-            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[1], label=r"$F_x$ meas.", **style)
-            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[1], linestyle=":", label=r"$F_x$ des.")
-            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[2], label=r"$F_y$ meas.", **style)
-            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[2], linestyle=":", label=r"$F_y$ des.")
+                (F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
+            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
+                          if col == 0 else {})
+            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[1],
+                             label=r"$F_x$ measured", **meas_style)
+            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[1],
+                             linestyle=":", label=r"$F_x$ desired")
+            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[2],
+                             label=r"$F_y$ measured", **meas_style)
+            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[2],
+                             linestyle=":", label=r"$F_y$ desired")
             axs[0, col].set_ylim(force_lims)
-            if col == 0:
-                axs[0, col].legend(ncol=2, fontsize=9)
+            if col == 1:
+                axs[0, col].legend(ncol=2, **legend_kw)
         axs[0, 0].set_ylabel(r"$F\left[mN\right]$", fontsize=font_size)
         if F_err is not None:
             for i, color in enumerate(colors_lst[1:3]):
-                axs[0, 1].fill_between(times[0], F_exp_meas[i, 1:Ts[0]] - F_err[i, 1:Ts[0]],
+                axs[0, 0].fill_between(times[0], F_exp_meas[i, 1:Ts[0]] - F_err[i, 1:Ts[0]],
                                        F_exp_meas[i, 1:Ts[0]] + F_err[i, 1:Ts[0]],
                                        color=color, alpha=0.5, linewidth=0)
 
     # ====== middle: update tip pose ======
     angle_axes = []
-    for col, (df, t, T) in enumerate(zip((sim_df, exp_df), times[::-1], Ts[::-1])):
+    for col, (df, t, T) in enumerate(zip((exp_df, sim_df), times, Ts)):
         ax_angle = axs[1, col].twinx()
         if angle_axes:
             ax_angle.sharey(angle_axes[0])
         angle_axes.append(ax_angle)
-        axs[1, col].plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
-                         color=colors_lst[1], label=r"$tip_x^{\,!}$")
-        axs[1, col].plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
-                         color=colors_lst[2], label=r"$tip_y^{\,!}$")
-        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T],
-                      color=colors_lst[3], label=r"$\theta^{\,!}$")
         if col == 0:
-            axs[1, col].set_ylabel(r"$tip^{\,!}\left[mm\right]$", fontsize=font_size)
+            ax_angle.tick_params(axis="y", right=False, labelright=False)
+        update_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
+                        if col == 0 else {})
+        axs[1, col].plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
+                         color=colors_lst[1], label=r"$x^{\,!}$", **update_style)
+        axs[1, col].plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
+                         color=colors_lst[2], label=r"$y^{\,!}$", **update_style)
+        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T],
+                       color=colors_lst[3], label=r"$\theta^{\,!}$", **update_style)
+        if col == 0:
+            axs[1, col].set_ylabel(r"$x^{\,!},\,y^{\,!}\left[mm\right]$", fontsize=font_size)
         if col == 1:
             ax_angle.set_ylabel(r"$\theta^{\,!}\left[\degree\right]$", fontsize=font_size)
         lines = axs[1, col].get_lines() + ax_angle.get_lines()
-        if col == 0:
-            axs[1, col].legend(lines, [line.get_label() for line in lines], ncol=2, fontsize=9)
+        if col == 1:
+            axs[1, col].legend(lines, [line.get_label() for line in lines],
+                               ncol=3, **legend_kw)
 
     # ====== bottom: MSE loss ======
-    # left panel - simulation
-    axs[2, 0].plot(times[1], loss_MSE_sim[1:Ts[1]], color=colors_lst[0], label=r"$\mathcal{L}$")
-    axs[2, 0].plot(times[1], np.zeros(len(times[1])), color=colors_lst[0], linestyle="--")
+    # left panel - experiment
+    axs[2, 0].plot(times[0], loss_MSE_exp[1:Ts[0]], marker=".", linestyle="None",
+                   markersize=markersize, color=colors_lst[0], label=None)
+    axs[2, 0].plot(times[0], np.zeros(len(times[0])), color=colors_lst[0], linestyle="--")
 
     axs[2, 0].set_xlabel("t", fontsize=font_size)
-    axs[2, 0].set_ylabel("Loss", fontsize=font_size)
+    axs[2, 0].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
     axs[2, 0].set_ylim(loss_lims)
 
-    # right panel - experiment
-    axs[2, 1].plot(times[0], loss_MSE_exp[1:Ts[0]], marker=".", linestyle="None",
-                   markersize=markersize, color=colors_lst[0], label=r"$\mathcal{L}$")
-    axs[2, 1].plot(times[0], np.zeros(len(times[0])), color=colors_lst[0], linestyle="--")
+    # right panel - simulation
+    axs[2, 1].plot(times[1], loss_MSE_sim[1:Ts[1]], color=colors_lst[0], label=None)
+    axs[2, 1].plot(times[1], np.zeros(len(times[1])), color=colors_lst[0], linestyle="--")
     axs[2, 1].set_xlabel("t", fontsize=font_size)
 
     # ====== titles ======
-    axs[0, 0].set_title("Simulation", fontsize=font_size)
-    axs[0, 1].set_title("Experiment", fontsize=font_size)
+    axs[0, 0].set_title("Experiment", fontsize=font_size)
+    axs[0, 1].set_title("Simulation", fontsize=font_size)
 
-    # ====== legends ======
-    legend_kw = dict(loc="best", ncol=2, fontsize=11.5, handlelength=1.2,
-                     handletextpad=0.3, columnspacing=0.18, borderpad=0.08,
-                     labelspacing=0.08, markerscale=0.8, frameon=True)
-    axs[2, 0].legend(**legend_kw)
+    # ====== legend ======
+    axs[2, 1].legend(ncol=1, **legend_kw)
 
     # ====== locator + layout ======
     axs[-1, 0].xaxis.set_major_locator(MaxNLocator(integer=True))
     axs[-1, 1].xaxis.set_major_locator(MaxNLocator(integer=True))
 
-    plt.tight_layout()
+    plt.tight_layout(w_pad=0.5)
     if save:
         plt.savefig("importants.png", dpi=300, bbox_inches="tight")
     plt.show()
@@ -445,6 +458,92 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     plt.show()
 
 
+def plot_trajectory_positions(
+    csv_file_path: Union[str, Path],
+    output_path: Optional[Union[str, Path]] = None,
+    save: bool = True,
+    dpi: int = 180,
+    font_size: float = 18,
+) -> Path:
+    """Plot the tip trajectory, with marker color indicating tip angle."""
+    csv_path = Path(csv_file_path)
+    if output_path is None:
+        output_path = csv_path.with_name(f"{csv_path.stem}_trajectory_positions.png")
+    output_path = Path(output_path)
+
+    required_cols = ["x_tip", "y_tip", "tip_angle_deg"]
+    df = pd.read_csv(csv_path)
+    missing_cols = [col for col in required_cols if col not in df.columns]
+    if missing_cols:
+        raise KeyError(f"Missing columns in {csv_path}: {missing_cols}")
+
+    positions = df[required_cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if positions.empty:
+        raise ValueError(f"No valid trajectory positions found in {csv_path}.")
+
+    x_tip = positions["x_tip"].to_numpy(dtype=float)
+    y_tip = positions["y_tip"].to_numpy(dtype=float)
+    tip_angle_deg = positions["tip_angle_deg"].to_numpy(dtype=float)
+
+    fig, ax = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
+    norm = plt.Normalize(vmin=np.min(tip_angle_deg), vmax=np.max(tip_angle_deg))
+    points = np.column_stack((x_tip, y_tip))
+    interpolation_steps = 100
+    segment_points = []
+    segment_angles = []
+    for start_point, end_point, start_angle, end_angle in zip(
+        points[:-1], points[1:], tip_angle_deg[:-1], tip_angle_deg[1:]
+    ):
+        fractions = np.linspace(0.0, 1.0, interpolation_steps + 1)
+        interpolated_points = (
+            start_point[None, :] * (1.0 - fractions[:, None])
+            + end_point[None, :] * fractions[:, None]
+        )
+        segment_points.append(
+            np.stack((interpolated_points[:-1], interpolated_points[1:]), axis=1)
+        )
+        angle_fractions = (fractions[:-1] + fractions[1:]) / 2
+        segment_angles.append(
+            start_angle * (1.0 - angle_fractions) + end_angle * angle_fractions
+        )
+    segments = np.concatenate(segment_points)
+    line = LineCollection(
+        segments,
+        cmap=custom_cmap,
+        norm=norm,
+        linewidth=2,
+        linestyle="-",
+        zorder=1,
+    )
+    line.set_array(np.concatenate(segment_angles))
+    ax.add_collection(line)
+    markers = ax.scatter(
+        x_tip,
+        y_tip,
+        c=tip_angle_deg,
+        cmap=custom_cmap,
+        norm=norm,
+        marker="o",
+        s=70,
+        edgecolors="black",
+        linewidths=0.7,
+        zorder=2,
+    )
+
+    ax.set_xlabel(r"$x_{tip}\,\left[mm\right]$", fontsize=font_size)
+    ax.set_ylabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
+    ax.tick_params(axis="both", labelsize=font_size)
+    colorbar = fig.colorbar(markers, ax=ax)
+    colorbar.set_label(r"$\theta_{tip}\,\left[^\circ\right]$", fontsize=font_size)
+    colorbar.ax.tick_params(labelsize=font_size)
+
+    if save:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(output_path, dpi=dpi)
+    plt.show()
+    return output_path
+
+
 def plot_force_along_traj(
     csv_file_path: Union[str, Path],
     vid_path: Optional[Union[str, Path]] = None,
@@ -462,6 +561,7 @@ def plot_force_along_traj(
     csv_file_path_sim: Optional[Union[str, Path]] = None,
     experiment_error: float = 10.0,
     scale_y: Optional[bool] = False,
+    range_y: Optional[bool] = False,
     y_lims: Tuple[float, float] = (-120.0, 350.0),
     font_size: float = 18,
     line_width: float = 3.0,
@@ -528,7 +628,11 @@ def plot_force_along_traj(
             df_in[fy_col].to_numpy(dtype=float),
         )
 
-    y, fx, fy = read_force_traj(csv_path)
+    if range_y:
+        _, fx, fy = read_force_traj(csv_path)
+        y = np.arange(1,len(fx)+1)
+    else:
+        y, fx, fy = read_force_traj(csv_path)
 
     if graph_only:
         if csv_file_path_sim is None:
@@ -536,9 +640,14 @@ def plot_force_along_traj(
         if experiment_error < 0:
             raise ValueError("experiment_error must be non-negative.")
 
-        y_sim, fx_sim, fy_sim = read_force_traj(Path(csv_file_path_sim))
-        if scale_y:
-            y_sim = y_sim * 1e3
+        if range_y:
+            _, fx_sim, fy_sim = read_force_traj(Path(csv_file_path_sim))
+            y_sim = np.arange(1, len(fx_sim) + 1)
+        else:
+            y_sim, fx_sim, fy_sim = read_force_traj(Path(csv_file_path_sim))
+            if scale_y:
+                y_sim = y_sim * 1e3
+        
         colors_lst, _, _ = colors.color_scheme()
         fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
 
@@ -562,9 +671,14 @@ def plot_force_along_traj(
                       label="_nolegend_")
         ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
                       label="_nolegend_")
-        ax_force.set_xlabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
+        if range_y:
+            ax_force.set_xlabel("step", fontsize=font_size)
+        else:
+            ax_force.set_xlabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
         ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
         ax_force.tick_params(axis="both", labelsize=font_size)
+        if range_y:
+            ax_force.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax_force.set_ylim(y_lims)
         legend_handles = [
             Line2D([0], [0], color=colors_lst[2], linewidth=line_width, marker=".",
