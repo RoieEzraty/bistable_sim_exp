@@ -139,7 +139,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     """
     colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
-    font_size = 16
+    font_size = 14
     error_style = error_style.lower()
     if error_style not in {"shaded", "bars"}:
         raise ValueError('error_style must be either "shaded" or "bars".')
@@ -215,22 +215,22 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         shared_loss_lims = get_loss_lims(np.concatenate(plotted_losses))
         loss_lims = [shared_loss_lims, shared_loss_lims]
 
-    fig, axs = plt.subplots(nrows=2 if position_mode else 3, ncols=2, sharex="col",
-                            sharey=False if position_mode else "row", figsize=(8 if position_mode else 12, 5),
-                            gridspec_kw={"height_ratios": [1.4, 1] if position_mode else [1.4, 1.2, 1]})
+    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col",
+                            sharey=False if position_mode else "row", figsize=(10 if position_mode else 12, 5),
+                            gridspec_kw={"height_ratios": [1.4, 1.4, 1] if position_mode else [1.4, 1.2, 1]})
     if position_mode:
-        axs[0, 1].sharey(axs[0, 0])
-        axs[0, 1].tick_params(axis="y", labelleft=False)
+        axs[1, 0].sharey(axs[0, 0])
 
     markersize = 10.0
     legend_kw = dict(loc="best", fontsize=font_size-3, handlelength=1.0,
                      handletextpad=0.25, columnspacing=0.45, borderpad=0.2,
                      labelspacing=0.15, markerscale=0.75, frameon=True)
     if position_mode:
+        pose_axes = (axs[0, 0], axs[1, 0])
         angle_axes = []
         for col, (df, cols, t, T) in enumerate(zip(
                 (exp_df, sim_df), pose_cols, times, Ts)):
-            ax_angle = axs[0, col].twinx()
+            ax_angle = pose_axes[col].twinx()
             if angle_axes:
                 ax_angle.sharey(angle_axes[0])
             angle_axes.append(ax_angle)
@@ -240,19 +240,19 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             desired_style = {"linestyle": "--"}
             for meas, des, color, label in ((cols[0], cols[3], colors_lst[1], "x"),
                                             (cols[1], cols[4], colors_lst[2], "y")):
-                axs[0, col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
-                                 color=color, label=rf"${label}$", **measured_style)
-                axs[0, col].plot(t, df[des].to_numpy(dtype=float)[1:T],
-                                 color=color, **desired_style)
+                pose_axes[col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
+                                    color=color, label=rf"${label}$", **measured_style)
+                pose_axes[col].plot(t, df[des].to_numpy(dtype=float)[1:T],
+                                    color=color, **desired_style)
             ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$", **measured_style)
             ax_angle.plot(t, theta_des, color=colors_lst[3], **desired_style)
             ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
-            if col == 1:
-                lines = axs[0, col].get_lines()[::2] + ax_angle.get_lines()[::2]
-                axs[0, col].legend(lines, [line.get_label() for line in lines],
-                                   ncol=3, **legend_kw)
+            if col == 0:
+                lines = pose_axes[col].get_lines()[::2] + ax_angle.get_lines()[::2]
+                pose_axes[col].legend(lines, [line.get_label() for line in lines],
+                                      ncol=3, **{**legend_kw, "loc": "lower right"})
         axs[0, 0].set_ylabel(r"$x,\,y\left[mm\right]$", fontsize=font_size)
-        ax_angle.set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
+        angle_axes[0].set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
     else:
         for col, (meas, des, t, T) in enumerate(zip(
                 (F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
@@ -286,7 +286,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                         elinewidth=2.0, capsize=4.0, capthick=2.0,
                     )
 
-    update_axes = [axs[1, 0]] * 2 if position_mode else axs[1]
+    update_axes = [axs[1, 1]] * 2 if position_mode else axs[1]
     angle_axes = []
     for col, (ax, df, t, T) in enumerate(zip(update_axes, (exp_df, sim_df), times, Ts)):
         ax_angle = angle_axes[0] if position_mode and angle_axes else ax.twinx()
@@ -310,7 +310,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         update_axes[0].set_xlabel("t", fontsize=font_size)
     angle_axes[-1].set_ylabel(r"$\theta^{\,!}\left[\degree\right]$", fontsize=font_size)
 
-    loss_row, loss_col = (1, 1) if position_mode else (2, 0)
+    loss_row, loss_col = (2, 0)
     loss_axes = [axs[loss_row, loss_col],
                  axs[loss_row, loss_col].twinx() if position_mode else axs[2, 1]]
     loss_lines = []
@@ -335,12 +335,19 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         loss_axes[1].legend(ncol=1, **legend_kw)
 
     axs[0, 0].set_title("Experiment", fontsize=font_size)
-    axs[0, 1].set_title("Simulation", fontsize=font_size)
+    axs[1 if position_mode else 0, 0 if position_mode else 1].set_title(
+        "Simulation", fontsize=font_size)
+    if position_mode:
+        axs[0, 1].axis("off")
+        axs[2, 1].axis("off")
 
     axs[-1, 0].xaxis.set_major_locator(MaxNLocator(integer=True))
     axs[-1, 1].xaxis.set_major_locator(MaxNLocator(integer=True))
 
     plt.tight_layout(w_pad=0.5)
+    if position_mode:
+        pos = axs[1, 1].get_position()
+        axs[1, 1].set_position([pos.x0, pos.y0 - 0.125, pos.width, pos.height])
     if save:
         plt.savefig("importants.png", dpi=300, bbox_inches="tight")
     plt.show()
