@@ -103,7 +103,8 @@ def crop_frame_edges(
 
 def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                                   final_t: Optional[int] = None, save: bool = False,
-                                  mod: Optional[str] = None, share_t: bool = True) -> None:
+                                  mod: Optional[str] = None, share_t: bool = True,
+                                  error_style: str = "shaded") -> None:
     """
     Compare experimental and simulated training in force mode or ``mod="pos"``.
 
@@ -139,6 +140,9 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
     font_size = 16
+    error_style = error_style.lower()
+    if error_style not in {"shaded", "bars"}:
+        raise ValueError('error_style must be either "shaded" or "bars".')
 
     position_mode = (mod or "").lower() == "pos"
 
@@ -161,7 +165,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                                 sim_df["Fy_meas"].to_numpy(dtype=float)])
         F_sim_des = np.vstack([sim_df["Fx_des"].to_numpy(dtype=float),
                                sim_df["Fy_des"].to_numpy(dtype=float)])
-        F_err = np.vstack([exp_df["F_err"].to_numpy(dtype=float)] * 2) if "F_err" in exp_df.columns else None
+        F_err = np.vstack([exp_df["F_err"].to_numpy(dtype=float)] * 2) if "F_err" in exp_df.columns else 10.0
 
     update_cols = ["upd_x_tip", "upd_y_tip", "upd_tip_angle"]
     missing_update_cols = [col for col in update_cols if col not in exp_df.columns or col not in sim_df.columns]
@@ -194,13 +198,33 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     if not position_mode:
         force_lims = padded_lims([F_exp_meas[:, :Ts[0]], F_exp_des[:, :Ts[0]],
                                   F_sim_meas[:, :Ts[1]], F_sim_des[:, :Ts[1]]])
-    loss_max = np.max([np.max(loss_MSE_exp[:Ts[0]]), np.max(loss_MSE_sim[:Ts[1]])])
-    loss_min = np.min([np.min(loss_MSE_exp[:Ts[0]]), np.min(loss_MSE_sim[:Ts[1]])])
-    delta_loss = loss_max - loss_min
-    loss_lims = [loss_min-delta_loss*0.1, loss_max+delta_loss*0.05]
+    def get_loss_lims(losses: NDArray[np.float64]) -> List[float]:
+        finite_losses = losses[np.isfinite(losses)]
+        if finite_losses.size == 0:
+            raise ValueError("No finite loss_MSE values found in the plotted rows.")
+        loss_min = float(np.min(finite_losses))
+        loss_max = float(np.max(finite_losses))
+        delta_loss = loss_max - loss_min
+        if delta_loss > 0:
+            return [loss_min-delta_loss*0.1, loss_max+delta_loss*0.05]
+        loss_pad = max(abs(loss_min) * 0.1, 1.0)
+        return [loss_min-loss_pad, loss_max+loss_pad]
 
-    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col", sharey="row", figsize=(12, 5),
+    plotted_losses = [loss_MSE_exp[1:Ts[0]], loss_MSE_sim[1:Ts[1]]]
+    if position_mode:
+        loss_lims = [get_loss_lims(losses) for losses in plotted_losses]
+    else:
+        shared_loss_lims = get_loss_lims(np.concatenate(plotted_losses))
+        loss_lims = [shared_loss_lims, shared_loss_lims]
+
+    fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col",
+                            sharey=False if position_mode else "row", figsize=(12, 5),
                             gridspec_kw={"height_ratios": [1.4, 1.2, 1]})
+    if position_mode:
+        axs[0, 1].sharey(axs[0, 0])
+        axs[1, 1].sharey(axs[1, 0])
+        axs[0, 1].tick_params(axis="y", labelleft=False)
+        axs[1, 1].tick_params(axis="y", labelleft=False)
 
     # ====== top: measured and desired pose or force ======
     markersize = 10.0
@@ -249,9 +273,19 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         axs[0, 0].set_ylabel(r"$F\left[mN\right]$", fontsize=font_size)
         if F_err is not None:
             for i, color in enumerate(colors_lst[1:3]):
-                axs[0, 0].fill_between(times[0], F_exp_meas[i, 1:Ts[0]] - F_err[i, 1:Ts[0]],
-                                       F_exp_meas[i, 1:Ts[0]] + F_err[i, 1:Ts[0]],
-                                       color=color, alpha=0.5, linewidth=0)
+                if error_style == "shaded":
+                    axs[0, 0].fill_between(
+                        times[0],
+                        F_exp_meas[i, 1:Ts[0]] - F_err,
+                        F_exp_meas[i, 1:Ts[0]] + F_err,
+                        color=color, alpha=0.5, linewidth=0,
+                    )
+                else:
+                    axs[0, 0].errorbar(
+                        times[0], F_exp_meas[i, 1:Ts[0]],
+                        yerr=F_err, fmt="none", color=color,
+                        elinewidth=2.0, capsize=4.0, capthick=2.0,
+                    )
 
     # ====== middle: update tip pose ======
     angle_axes = []
@@ -287,12 +321,13 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
 
     axs[2, 0].set_xlabel("t", fontsize=font_size)
     axs[2, 0].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
-    axs[2, 0].set_ylim(loss_lims)
+    axs[2, 0].set_ylim(loss_lims[0])
 
     # right panel - simulation
     axs[2, 1].plot(times[1], loss_MSE_sim[1:Ts[1]], color=colors_lst[0], label=None)
     axs[2, 1].plot(times[1], np.zeros(len(times[1])), color=colors_lst[0], linestyle="--")
     axs[2, 1].set_xlabel("t", fontsize=font_size)
+    axs[2, 1].set_ylim(loss_lims[1])
 
     # ====== titles ======
     axs[0, 0].set_title("Experiment", fontsize=font_size)
@@ -568,6 +603,7 @@ def plot_force_along_traj(
     marker_size: float = 9.0,
     errorbar_line_width: float = 2.0,
     errorbar_capsize: float = 4.0,
+    error_style: str = "shaded",
 ) -> Path:
     """
     Plot ``F_x``/``F_y`` as a function of ``y_tip``.
@@ -576,8 +612,9 @@ def plot_force_along_traj(
     With ``graph_only=True``, create a static 7-by-4 graph without the robot
     video. In graph-only mode, ``csv_file_path`` is the experiment CSV and
     ``csv_file_path_sim`` is the simulation CSV. Experiment values are shown as
-    dots with ``experiment_error`` error bars; simulation values are solid
-    lines without error bars.
+    dots with ``experiment_error`` shown as a shaded band by default;
+    ``error_style="bars"`` uses error bars instead. Simulation values are
+    solid lines without error bars.
 
     The force curves start growing at ``initial_time_s`` in the source video and
     finish at ``final_time_s``. Once all trajectory points are shown, mean-force
@@ -601,6 +638,9 @@ def plot_force_along_traj(
     if mean_line_mode not in {"des", "meas"}:
         raise ValueError('mean_line_mode must be either "des" or "meas".')
     mean_linestyle = ":" if mean_line_mode == "des" else "-"
+    error_style = error_style.lower()
+    if error_style not in {"shaded", "bars"}:
+        raise ValueError('error_style must be either "shaded" or "bars".')
 
     col_candidates = {
         "y": ("y_tip", "y", "Position_y"),
@@ -651,22 +691,40 @@ def plot_force_along_traj(
         colors_lst, _, _ = colors.color_scheme()
         fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
 
-        errorbar_style = {
-            "fmt": ".",
-            "linestyle": "none",
-            "markersize": marker_size,
-            "elinewidth": errorbar_line_width,
-            "capsize": errorbar_capsize,
-            "capthick": errorbar_line_width,
-        }
-        ax_force.errorbar(
-            y, fx, yerr=experiment_error, color=colors_lst[2],
-            label="_nolegend_", **errorbar_style,
-        )
-        ax_force.errorbar(
-            y, fy, yerr=experiment_error, color=colors_lst[1],
-            label="_nolegend_", **errorbar_style,
-        )
+        if error_style == "shaded":
+            ax_force.fill_between(
+                y, fx - experiment_error, fx + experiment_error,
+                color=colors_lst[2], alpha=0.5, linewidth=0,
+            )
+            ax_force.fill_between(
+                y, fy - experiment_error, fy + experiment_error,
+                color=colors_lst[1], alpha=0.5, linewidth=0,
+            )
+            ax_force.plot(
+                y, fx, ".", color=colors_lst[2], markersize=marker_size,
+                label="_nolegend_",
+            )
+            ax_force.plot(
+                y, fy, ".", color=colors_lst[1], markersize=marker_size,
+                label="_nolegend_",
+            )
+        else:
+            errorbar_style = {
+                "fmt": ".",
+                "linestyle": "none",
+                "markersize": marker_size,
+                "elinewidth": errorbar_line_width,
+                "capsize": errorbar_capsize,
+                "capthick": errorbar_line_width,
+            }
+            ax_force.errorbar(
+                y, fx, yerr=experiment_error, color=colors_lst[2],
+                label="_nolegend_", **errorbar_style,
+            )
+            ax_force.errorbar(
+                y, fy, yerr=experiment_error, color=colors_lst[1],
+                label="_nolegend_", **errorbar_style,
+            )
         ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
                       label="_nolegend_")
         ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
