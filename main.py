@@ -22,24 +22,24 @@ init_buckle = "0001"
 desired_buckle = "1000"
 exp_file_prelim = r"..\\Meca500\\data\\training\\June21_fromPos\\{}to{}\\".format(init_buckle, desired_buckle)
 sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\\May17Pos_symmetrical_delta\\"
-exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
-sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}_extended.csv".format(init_buckle, desired_buckle)
+exp_file_path = exp_file_prelim + r"{}to{}_correctedLoss.csv".format(init_buckle, desired_buckle)
+sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}_extended_correctedLoss.csv".format(init_buckle, desired_buckle)
 
 plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
 
-# # force 0011->1000
-# mod = "force"
-# init_buckle = "0011"
-# desired_buckle = "1000"
-# exp_file_prelim = r"..\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\"
-# sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\June6_May22singleHinge2ndEnd_May27shortArcTraj\\stiffk\\1stEnd\\"
-# exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
-# sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(init_buckle, desired_buckle)
+# force 0011->1000
+mod = "force"
+init_buckle = "0011"
+desired_buckle = "1000"
+exp_file_prelim = r"..\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\"
+sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\June6_May22singleHinge2ndEnd_May27shortArcTraj\\stiffk\\1stEnd\\"
+exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
+sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(init_buckle, desired_buckle)
 
-# # sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
-# # exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
+# sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
+# exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
 
-# plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
+plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
 
 # %% ====== Single ======
 

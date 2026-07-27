@@ -139,7 +139,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     """
     colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
-    font_size = 16
+    font_size = 14
     error_style = error_style.lower()
     if error_style not in {"shaded", "bars"}:
         raise ValueError('error_style must be either "shaded" or "bars".')
@@ -218,13 +218,10 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         loss_lims = [shared_loss_lims, shared_loss_lims]
 
     fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col",
-                            sharey=False if position_mode else "row", figsize=(12, 5),
-                            gridspec_kw={"height_ratios": [1.4, 1.2, 1]})
-    if position_mode:
-        axs[0, 1].sharey(axs[0, 0])
-        axs[1, 1].sharey(axs[1, 0])
-        axs[0, 1].tick_params(axis="y", labelleft=False)
-        axs[1, 1].tick_params(axis="y", labelleft=False)
+                            sharey=False, figsize=(12, 5),
+                            gridspec_kw={"height_ratios": [1.4, 1.2, 1.2]})
+    axs[0, 1].sharey(axs[0, 0])
+    axs[0, 1].tick_params(axis="y", labelleft=False)
 
     # ====== top: measured and desired pose or force ======
     markersize = 10.0
@@ -237,23 +234,26 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             ax_angle = axs[0, col].twinx()
             theta_meas = df[cols[2]].to_numpy(dtype=float)[1:T]
             theta_des = df[cols[5]].to_numpy(dtype=float)[1:T]
+            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
+                          if col == 0 else {})
             for meas, des, color, label in ((cols[0], cols[3], colors_lst[1], "x"),
                                             (cols[1], cols[4], colors_lst[2], "y")):
                 axs[0, col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
-                                 color=color, label=rf"${label}$ measured")
+                                 color=color, label=rf"${label}$", **meas_style)
                 axs[0, col].plot(t, df[des].to_numpy(dtype=float)[1:T],
-                                 color=color, linestyle=":", label=rf"${label}$ desired")
-            ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$ measured")
-            ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":", label=r"$\theta$ desired")
+                                 color=color, linestyle=":")
+            ax_angle.plot(t, theta_meas, color=colors_lst[3],
+                          label=r"$\theta$", **meas_style)
+            ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":")
             ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
             if col == 0:
                 axs[0, col].set_ylabel(r"$x,\,y\left[mm\right]$", fontsize=font_size)
             if col == 1:
                 ax_angle.set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
-            lines = axs[0, col].get_lines() + ax_angle.get_lines()
-            if col == 1:
+            lines = axs[0, col].get_lines()[::2] + ax_angle.get_lines()[::2]
+            if col == 0:
                 axs[0, col].legend(lines, [line.get_label() for line in lines],
-                                   ncol=3, **legend_kw)
+                                   ncol=3, **{**legend_kw, "loc": "lower right"})
     else:
         for col, (meas, des, t, T) in enumerate(zip(
                 (F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
@@ -288,54 +288,53 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                     )
 
     # ====== middle: update tip pose ======
+    update_axes = [axs[2, 0]] * 2
     angle_axes = []
-    for col, (df, t, T) in enumerate(zip((exp_df, sim_df), times, Ts)):
-        ax_angle = axs[1, col].twinx()
-        if angle_axes:
-            ax_angle.sharey(angle_axes[0])
+    for col, (ax, df, t, T) in enumerate(zip(update_axes, (exp_df, sim_df), times, Ts)):
+        ax_angle = angle_axes[0] if angle_axes else ax.twinx()
         angle_axes.append(ax_angle)
-        if col == 0:
-            ax_angle.tick_params(axis="y", right=False, labelright=False)
         update_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
                         if col == 0 else {})
-        axs[1, col].plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
-                         color=colors_lst[1], label=r"$x^{\,!}$", **update_style)
-        axs[1, col].plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
-                         color=colors_lst[2], label=r"$y^{\,!}$", **update_style)
+        ax.plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
+                color=colors_lst[1], label=r"$x^{\,!}$", **update_style)
+        ax.plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
+                color=colors_lst[2], label=r"$y^{\,!}$", **update_style)
         ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T],
                        color=colors_lst[3], label=r"$\theta^{\,!}$", **update_style)
         if col == 0:
-            axs[1, col].set_ylabel(r"$x^{\,!},\,y^{\,!}\left[mm\right]$", fontsize=font_size)
+            ax.set_ylabel(r"$x^{\,!},\,y^{\,!}\left[mm\right]$", fontsize=font_size)
         if col == 1:
             ax_angle.set_ylabel(r"$\theta^{\,!}\left[\degree\right]$", fontsize=font_size)
-        lines = axs[1, col].get_lines() + ax_angle.get_lines()
+        lines = ax.get_lines()[-2:] + ax_angle.get_lines()[-1:]
         if col == 1:
-            axs[1, col].legend(lines, [line.get_label() for line in lines],
-                               ncol=3, **legend_kw)
+            ax.legend(lines, [line.get_label() for line in lines], ncol=3, **legend_kw)
+    axs[1, 0].axis("off")
+    axs[1, 1].axis("off")
+    axs[2, 0].set_xlabel("t", fontsize=font_size)
 
     # ====== bottom: MSE loss ======
-    # left panel - experiment
-    axs[2, 0].plot(times[0], loss_MSE_exp[1:Ts[0]], marker=".", linestyle="None",
-                   markersize=markersize, color=colors_lst[0], label=None)
-    axs[2, 0].plot(times[0], np.zeros(len(times[0])), color=colors_lst[0], linestyle="--")
-
-    axs[2, 0].set_xlabel("t", fontsize=font_size)
-    axs[2, 0].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
-    axs[2, 0].set_ylim(loss_lims[0])
-
-    # right panel - simulation
-    axs[2, 1].plot(times[1], loss_MSE_sim[1:Ts[1]], color=colors_lst[0], label=None)
-    axs[2, 1].plot(times[1], np.zeros(len(times[1])), color=colors_lst[0], linestyle="--")
-    axs[2, 1].set_xlabel("t", fontsize=font_size)
-    axs[2, 1].set_ylim(loss_lims[1])
+    loss_axes = ([axs[2, 1], axs[2, 1].twinx()] if position_mode
+                 else [axs[2, 1], axs[2, 1]])
+    loss_lines = []
+    for col, (ax, loss, t, T) in enumerate(zip(
+            loss_axes, (loss_MSE_exp, loss_MSE_sim), times, Ts)):
+        style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
+                 if col == 0 else {})
+        label = ("experiment", "simulation")[col]
+        loss_lines.append(ax.plot(t, loss[1:T], color=colors_lst[0], label=label, **style)[0])
+        ax.plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
+        ax.set_ylim(loss_lims[col])
+    loss_axes[0].set_xlabel("t", fontsize=font_size)
+    loss_axes[1].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
+    loss_axes[1].yaxis.set_label_position("right")
+    loss_axes[0].legend(loss_lines, [line.get_label() for line in loss_lines],
+                        ncol=1, **legend_kw)
 
     # ====== titles ======
     axs[0, 0].set_title("Experiment", fontsize=font_size)
     axs[0, 1].set_title("Simulation", fontsize=font_size)
 
     # ====== legend ======
-    axs[2, 1].legend(ncol=1, **legend_kw)
-
     # ====== locator + layout ======
     axs[-1, 0].xaxis.set_major_locator(MaxNLocator(integer=True))
     axs[-1, 1].xaxis.set_major_locator(MaxNLocator(integer=True))
