@@ -36,10 +36,21 @@ sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\June6_May22singl
 exp_file_path = exp_file_prelim + r"{}to{}.csv".format(init_buckle, desired_buckle)
 sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}.csv".format(init_buckle, desired_buckle)
 
+exp_force_1_path = file_prelim + r"\Meca500\data\measurements\Feb26\1001\buckle=1001.csv"
+sim_force_1_path = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\Mar2\L=pt047 tip 2 mm left\1001\L=0.047_buckle1001.csv"
+exp_force_2_path = file_prelim + r"\Meca500\data\measurements\Feb26\0001\buckle=0001_2.csv"
+sim_force_2_path = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\Mar2\L=pt047 tip 2 mm left\0001\L=0.047_buckle0001.csv"
+
 # sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
 # exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
 
-plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
+plot_funcs.plot_compare_sim_exp_training(
+    exp_file_path, sim_file_path, final_t, save, mod=mod, share_t=share_t,
+    force_traj_files=[
+        (exp_force_1_path, sim_force_1_path),
+        (exp_force_2_path, sim_force_2_path),
+    ],
+)
 
 # %% ====== Single ======
 

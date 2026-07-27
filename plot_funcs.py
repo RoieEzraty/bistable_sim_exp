@@ -8,6 +8,7 @@ import pandas as pd
 
 from IPython.display import HTML
 from matplotlib import patches
+from matplotlib.axes import Axes
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.collections import LineCollection
@@ -104,7 +105,10 @@ def crop_frame_edges(
 def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                                   final_t: Optional[int] = None, save: bool = False,
                                   mod: Optional[str] = None, share_t: bool = True,
-                                  error_style: str = "shaded") -> None:
+                                  error_style: str = "shaded",
+                                  force_traj_files: Optional[List[Tuple[str, str]]] = None,
+                                  font_size: float = 14, marker_size: float = 10,
+                                  line_width: float = 1.5) -> None:
     """
     Compare experimental and simulated training in force mode or ``mod="pos"``.
 
@@ -139,7 +143,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     """
     colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
-    font_size = 14
+    plt.rcParams["lines.linewidth"] = line_width
     error_style = error_style.lower()
     if error_style not in {"shaded", "bars"}:
         raise ValueError('error_style must be either "shaded" or "bars".')
@@ -224,7 +228,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     axs[0, 1].tick_params(axis="y", labelleft=False)
 
     # ====== top: measured and desired pose or force ======
-    markersize = 10.0
+    markersize = marker_size
     legend_kw = dict(loc="best", fontsize=font_size-3, handlelength=1.0,
                      handletextpad=0.25, columnspacing=0.45, borderpad=0.2,
                      labelspacing=0.15, markerscale=0.75, frameon=True)
@@ -310,6 +314,19 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             ax.legend(lines, [line.get_label() for line in lines], ncol=3, **legend_kw)
     axs[1, 0].axis("off")
     axs[1, 1].axis("off")
+    if not position_mode and force_traj_files is not None:
+        if len(force_traj_files) != 2:
+            raise ValueError("force_traj_files must contain two (experiment, simulation) pairs.")
+        traj_grid = axs[1, 1].get_subplotspec().subgridspec(1, 2, wspace=0.35)
+        traj_axes = [fig.add_subplot(traj_grid[0, col]) for col in range(2)]
+        traj_axes[1].sharey(traj_axes[0])
+        for ax, (exp_path, sim_path) in zip(traj_axes, force_traj_files):
+            plot_force_along_traj(exp_path, csv_file_path_sim=sim_path,
+                                  graph_only=True, save=False, ax_force=ax,
+                                  font_size=font_size, marker_size=marker_size,
+                                  line_width=line_width)
+        traj_axes[1].get_legend().remove()
+        traj_axes[1].set_ylabel("")
     axs[2, 0].set_xlabel("t", fontsize=font_size)
 
     # ====== bottom: MSE loss ======
@@ -596,13 +613,14 @@ def plot_force_along_traj(
     experiment_error: float = 10.0,
     scale_y: Optional[bool] = False,
     range_y: Optional[bool] = False,
-    y_lims: Tuple[float, float] = (-120.0, 350.0),
+    y_lims: Tuple[float, float] = (-130.0, 250.0),
     font_size: float = 18,
     line_width: float = 3.0,
     marker_size: float = 9.0,
     errorbar_line_width: float = 2.0,
     errorbar_capsize: float = 4.0,
     error_style: str = "shaded",
+    ax_force: Optional[Axes] = None,
 ) -> Path:
     """
     Plot ``F_x``/``F_y`` as a function of ``y_tip``.
@@ -688,7 +706,11 @@ def plot_force_along_traj(
                 y_sim = y_sim * 1e3
         
         colors_lst, _, _ = colors.color_scheme()
-        fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
+        standalone = ax_force is None
+        if standalone:
+            fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
+        else:
+            fig = ax_force.figure
 
         if error_style == "shaded":
             ax_force.fill_between(
@@ -733,7 +755,8 @@ def plot_force_along_traj(
         else:
             ax_force.set_xlabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
         ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
-        ax_force.tick_params(axis="both", labelsize=font_size)
+        if standalone:
+            ax_force.tick_params(axis="both", labelsize=font_size)
         if range_y:
             ax_force.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax_force.set_ylim(y_lims)
@@ -745,12 +768,14 @@ def plot_force_along_traj(
                    markersize=marker_size,
                    label=r"$F_y$"),
         ]
-        ax_force.legend(handles=legend_handles, loc="best", ncol=2, fontsize=font_size)
+        ax_force.legend(handles=legend_handles, loc="best", ncol=2,
+                        fontsize=font_size if standalone else font_size-3)
 
         if save:
             output_path.parent.mkdir(parents=True, exist_ok=True)
             fig.savefig(output_path, dpi=dpi)
-        plt.show()
+        if standalone:
+            plt.show()
         return output_path
 
     fx_mean = float(np.mean(fx))
