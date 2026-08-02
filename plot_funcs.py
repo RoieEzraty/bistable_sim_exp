@@ -103,7 +103,7 @@ def crop_frame_edges(
 
 
 def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
-                                  final_t: Optional[int] = None, save: bool = False,
+                                  final_t: Optional[int] = None, save: Union[bool, str] = False,
                                   mod: Optional[str] = None, share_t: bool = True,
                                   error_style: str = "shaded",
                                   force_traj_files: Optional[List[Tuple[str, str]]] = None,
@@ -251,9 +251,9 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":")
             ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
             if col == 0:
-                axs[0, col].set_ylabel(r"$x,\,y\left[mm\right]$", fontsize=font_size)
+                axs[0, col].set_ylabel(r"$x^{\,eq},\,y^{\,eq}\left[mm\right]$", fontsize=font_size)
             if col == 1:
-                ax_angle.set_ylabel(r"$\theta\left[\degree\right]$", fontsize=font_size)
+                ax_angle.set_ylabel(r"$\theta^{\,eq}\left[\degree\right]$", fontsize=font_size)
             lines = axs[0, col].get_lines()[::2] + ax_angle.get_lines()[::2]
             if col == 0:
                 axs[0, col].legend(lines, [line.get_label() for line in lines],
@@ -358,7 +358,8 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
 
     plt.tight_layout(w_pad=0.5)
     if save:
-        plt.savefig("importants.png", dpi=300, bbox_inches="tight")
+        output_format = "pdf" if save == "pdf" else "png"
+        plt.savefig(f"importants_{mod}.{output_format}", dpi=300, bbox_inches="tight")
     plt.show()
 
 
@@ -512,14 +513,20 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
 def plot_trajectory_positions(
     csv_file_path: Union[str, Path],
     output_path: Optional[Union[str, Path]] = None,
-    save: bool = True,
+    save: Union[bool, str] = True,
     dpi: int = 180,
     font_size: float = 18,
 ) -> Path:
-    """Plot the tip trajectory, with marker color indicating tip angle."""
+    """
+    Plot the tip trajectory, with marker color indicating tip angle.
+
+    Set ``save="pdf"`` to save as PDF in the current working directory;
+    ``save=True`` saves PNG there.
+    """
     csv_path = Path(csv_file_path)
     if output_path is None:
-        output_path = csv_path.with_name(f"{csv_path.stem}_trajectory_positions.png")
+        output_suffix = ".pdf" if save == "pdf" else ".png"
+        output_path = Path.cwd() / f"{csv_path.stem}_trajectory_positions{output_suffix}"
     output_path = Path(output_path)
 
     required_cols = ["x_tip", "y_tip", "tip_angle_deg"]
@@ -604,7 +611,7 @@ def plot_force_along_traj(
     mean_line_mode: str = "des",
     csv_file_path_des: Optional[Union[str, Path]] = None,
     fps: int = 2,
-    save: bool = True,
+    save: Union[bool, str] = True,
     dpi: int = 180,
     video_crop_left_fraction: float = 0.12,
     video_crop_bottom_fraction: float = 0.12,
@@ -620,6 +627,7 @@ def plot_force_along_traj(
     errorbar_line_width: float = 2.0,
     errorbar_capsize: float = 4.0,
     error_style: str = "shaded",
+    plot_final_force_lines: bool = False,
     ax_force: Optional[Axes] = None,
 ) -> Path:
     """
@@ -631,7 +639,10 @@ def plot_force_along_traj(
     ``csv_file_path_sim`` is the simulation CSV. Experiment values are shown as
     dots with ``experiment_error`` shown as a shaded band by default;
     ``error_style="bars"`` uses error bars instead. Simulation values are
-    solid lines without error bars.
+    solid lines without error bars. Set ``save="pdf"`` to save a standalone
+    graph as PDF in the current working directory; ``save=True`` keeps the
+    default PNG output there. Set ``plot_final_force_lines=True`` to add
+    dashed horizontal lines at the final experimental force values.
 
     The force curves start growing at ``initial_time_s`` in the source video and
     finish at ``final_time_s``. Once all trajectory points are shown, mean-force
@@ -642,8 +653,11 @@ def plot_force_along_traj(
     """
     csv_path = Path(csv_file_path)
     if output_path is None:
-        output_suffix = ".png" if graph_only else ".mp4"
-        output_path = csv_path.with_name(f"{csv_path.stem}_force_along_traj{output_suffix}")
+        graph_suffix = ".pdf" if save == "pdf" else ".png"
+        if graph_only:
+            output_path = Path.cwd() / f"{csv_path.stem}_force_along_traj{graph_suffix}"
+        else:
+            output_path = csv_path.with_name(f"{csv_path.stem}_force_along_traj.mp4")
     output_path = Path(output_path)
 
     if not graph_only and not save:
@@ -750,6 +764,11 @@ def plot_force_along_traj(
                       label="_nolegend_")
         ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
                       label="_nolegend_")
+        if plot_final_force_lines:
+            ax_force.axhline(fx[-1], color=colors_lst[2], linestyle="--",
+                             linewidth=line_width, label="_nolegend_")
+            ax_force.axhline(fy[-1], color=colors_lst[1], linestyle="--",
+                             linewidth=line_width, label="_nolegend_")
         if range_y:
             ax_force.set_xlabel("step", fontsize=font_size)
         else:

@@ -11,13 +11,13 @@ file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
 
 # %% ====== Compare ======
 importlib.reload(plot_funcs)
-final_t = 25
-save = True
-
+font_size=12
+save = "pdf"
 share_t = False
 
-# # pos 0001->1000
+# pos 0001->1000
 mod = "pos"
+final_t = 25
 init_buckle = "0001"
 desired_buckle = "1000"
 exp_file_prelim = r"..\\Meca500\\data\\training\\June21_fromPos\\{}to{}\\".format(init_buckle, desired_buckle)
@@ -25,9 +25,10 @@ sim_file_prelim = "..\\Bistable shape acquisition jax\\Training\\May17Pos_symmet
 exp_file_path = exp_file_prelim + r"{}to{}_correctedLoss.csv".format(init_buckle, desired_buckle)
 sim_file_path = sim_file_prelim + r"final_loss_0_init_{}_desired_{}_extended_correctedLoss.csv".format(init_buckle, desired_buckle)
 
-plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t)
+plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod = mod, share_t = share_t, font_size=font_size)
 
 # force 0011->1000
+final_t = 25
 mod = "force"
 init_buckle = "0011"
 desired_buckle = "1000"
@@ -45,7 +46,7 @@ sim_force_2_path = file_prelim + r"\Bistable shape acquisition jax\Predetermined
 # exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
 
 plot_funcs.plot_compare_sim_exp_training(
-    exp_file_path, sim_file_path, final_t, save, mod=mod, share_t=share_t,
+    exp_file_path, sim_file_path, final_t, save, mod=mod, share_t=share_t, font_size=font_size,
     force_traj_files=[
         (exp_force_1_path, sim_force_1_path),
         (exp_force_2_path, sim_force_2_path),
@@ -100,6 +101,7 @@ plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_
 
 # %% ====== Force along trajectory: graph only ======
 importlib.reload(plot_funcs)
+
 # Choose the experiment and simulation CSV files here.
 csv_file_path_exp = file_prelim + r"\paper\Setup\Setup data\F along traj.csv"
 csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
@@ -108,11 +110,15 @@ plot_funcs.plot_force_along_traj(
     csv_file_path_sim=csv_file_path_sim,
     graph_only=True,
     experiment_error=10.0,
-    save=True,
+    save="pdf",
     scale_y=False,
     range_y = True,
-    y_lims=(-180, 420)
+    y_lims=(-180, 420),
+    font_size=20,
+    plot_final_force_lines=True,
 )
+
+# y_lims=(-120, 350)
 
 # csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\June4_PredeterMay27ShortArcZeroDeg\1stEnd\0000.csv"
 # csv_file_path_sim = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\May27\short_arc\May24Chain_1stEnd\buckle=0000.csv"
@@ -121,8 +127,9 @@ plot_funcs.plot_force_along_traj(
 #     csv_file_path_sim=csv_file_path_sim,
 #     graph_only=True,
 #     experiment_error=10.0,
-#     save=True,
-#     scale_y=True
+#     save="pdf",
+#     scale_y=True,
+#     y_lims=y_lims
 # )
 
 # csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\Feb26\0001\buckle=0001_2.csv"
@@ -132,15 +139,16 @@ plot_funcs.plot_force_along_traj(
 #     csv_file_path_sim=csv_file_path_sim,
 #     graph_only=True,
 #     experiment_error=10.0,
-#     save=True,
-#     scale_y=False
+#     save="pdf",
+#     scale_y=False,
+#     y_lims=y_lims
 # )
 
 # %% ====== Trajectory positions ======
 importlib.reload(plot_funcs)
 
 csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
-plot_funcs.plot_trajectory_positions(csv_file_path_exp, save=True)
+plot_funcs.plot_trajectory_positions(csv_file_path_sim, save="pdf", font_size=20)
 
 # %% ====== Force during zero Force ======
 importlib.reload(plot_funcs)
