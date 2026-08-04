@@ -22,8 +22,7 @@ from numpy.typing import NDArray
 from typing import TYPE_CHECKING, Callable, Union, Optional
 
 import colors
-colors_lst, red, custom_cmap = colors.color_scheme()
-
+colors_lst, red, custom_cmap = colors.color_scheme(scheme="Leon")
 
 def padded_lims(values: List[NDArray[np.float64]], pad_fraction: float = 0.08) -> Tuple[float, float]:
     finite_values = [np.asarray(value, dtype=float).reshape(-1) for value in values]
@@ -141,7 +140,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     - Simulation force is plotted as -Fx to match the experimental sign
       convention.
     """
-    colors_lst, red, custom_cmap = colors.color_scheme()
+    # colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
     plt.rcParams["lines.linewidth"] = line_width
     error_style = error_style.lower()
@@ -222,7 +221,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         loss_lims = [shared_loss_lims, shared_loss_lims]
 
     fig, axs = plt.subplots(nrows=3, ncols=2, sharex="col",
-                            sharey=False, figsize=(12, 5),
+                            sharey=False, figsize=(8, 6),
                             gridspec_kw={"height_ratios": [1.4, 1.2, 1.2]})
     axs[0, 1].sharey(axs[0, 0])
     axs[0, 1].tick_params(axis="y", labelleft=False)
@@ -263,20 +262,20 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                 (F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
             meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
                           if col == 0 else {})
-            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[1],
+            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[2],
                              label=r"$F_x$ measured", **meas_style)
-            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[1],
+            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[2],
                              linestyle=":", label=r"$F_x$ desired")
-            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[2],
+            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[1],
                              label=r"$F_y$ measured", **meas_style)
-            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[2],
+            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[1],
                              linestyle=":", label=r"$F_y$ desired")
             axs[0, col].set_ylim(force_lims)
             if col == 1:
                 axs[0, col].legend(ncol=2, **legend_kw)
         axs[0, 0].set_ylabel(r"$F\left[mN\right]$", fontsize=font_size)
         if F_err is not None:
-            for i, color in enumerate(colors_lst[1:3]):
+            for i, color in enumerate([colors_lst[2], colors_lst[1]]):
                 if error_style == "shaded":
                     axs[0, 0].fill_between(
                         times[0],
@@ -338,8 +337,8 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
                  if col == 0 else {})
         label = ("experiment", "simulation")[col]
-        loss_lines.append(ax.plot(t, loss[1:T], color=colors_lst[0], label=label, **style)[0])
-        ax.plot(t, np.zeros(len(t)), color=colors_lst[0], linestyle="--")
+        loss_lines.append(ax.plot(t, loss[1:T], color=colors_lst[2], label=label, **style)[0])
+        ax.plot(t, np.zeros(len(t)), color=colors_lst[2], linestyle="--")
         ax.set_ylim(loss_lims[col])
     loss_axes[0].set_xlabel("t", fontsize=font_size)
     loss_axes[1].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
@@ -377,7 +376,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     modes also include measured and desired force references when available.
     """
     mod = mod.lower()
-    colors_lst, red, custom_cmap = colors.color_scheme()
+    # colors_lst, red, custom_cmap = colors.color_scheme()
     plt.rcParams["axes.prop_cycle"] = plt.cycler("color", colors_lst)
     font_size = 13
 
@@ -719,7 +718,7 @@ def plot_force_along_traj(
             if scale_y:
                 y_sim = y_sim * 1e3
         
-        colors_lst, _, _ = colors.color_scheme()
+        # colors_lst, _, _ = colors.color_scheme()
         standalone = ax_force is None
         if standalone:
             fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
@@ -804,7 +803,7 @@ def plot_force_along_traj(
         _, fx_des, fy_des = read_force_traj(Path(csv_file_path_des))
         des_means = (float(np.mean(fx_des)), float(np.mean(fy_des)))
 
-    colors_lst, red, custom_cmap = colors.color_scheme()
+    # colors_lst, red, custom_cmap = colors.color_scheme()
 
     x_lims = padded_lims([y])
     force_lim_values = [fx, fy, np.asarray([fx_mean, fy_mean], dtype=float)]
@@ -1076,7 +1075,7 @@ def plot_force_during_zero_force(
     )
 
     line_style = ":" if mean_line_mode == "des" else "-"
-    colors_lst, red, custom_cmap = colors.color_scheme()
+    # colors_lst, red, custom_cmap = colors.color_scheme()
 
     x_lims = time_step_lims(t_csv)
     force_lims = padded_lims([fx, fy])
@@ -1387,7 +1386,7 @@ def training_force_data_and_vid(
 
     def plot_training_snapshot(fig: plt.Figure, axes: List[plt.Axes], df_full: pd.DataFrame, frame_idx: int,
                                csv_name: str, axis_lims: dict) -> None:
-        colors_lst, red, custom_cmap = colors.color_scheme()
+        # colors_lst, red, custom_cmap = colors.color_scheme()
         df = df_full.iloc[:frame_idx + 1]
         t = df["t"].to_numpy(dtype=float) if "t" in df.columns else np.arange(1, len(df) + 1, dtype=float)
         font_size = 10
@@ -1725,7 +1724,7 @@ def training_pos_data_and_vid(
 
     def plot_position_snapshot(fig: plt.Figure, axes: List[plt.Axes], df_full: pd.DataFrame,
                                frame_idx: int, axis_lims: dict) -> None:
-        colors_lst, red, custom_cmap = colors.color_scheme()
+        # colors_lst, red, custom_cmap = colors.color_scheme()
         df = df_full.iloc[:frame_idx + 1]
         t = df["t"].to_numpy(dtype=float) if "t" in df.columns else np.arange(1, len(df) + 1, dtype=float)
         font_size = 10

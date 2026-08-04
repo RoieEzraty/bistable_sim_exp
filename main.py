@@ -3,11 +3,9 @@
 import importlib
 import numpy as np
 
-import plot_funcs
+import plot_funcs, colors
 
 file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
-
-
 
 # %% ====== Compare ======
 importlib.reload(plot_funcs)
@@ -146,6 +144,7 @@ plot_funcs.plot_force_along_traj(
 
 # %% ====== Trajectory positions ======
 importlib.reload(plot_funcs)
+importlib.reload(colors)
 
 csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
 plot_funcs.plot_trajectory_positions(csv_file_path_sim, save="pdf", font_size=20)

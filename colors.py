@@ -12,11 +12,12 @@ from typing import Tuple
 # ==================================
 
 
-def color_scheme(show: bool = False) -> Tuple[list[str], str, Colormap]:
+def color_scheme(scheme: str = "mine", show: bool = False) -> Tuple[list[str], str, Colormap]:
     """
     define color scheme and return main colors, main red color and a colormap
 
     inputs:
+    scheme - string specifying the color scheme, "mine" uses mine, "Leon" uses Leon's
     show - boolean of whether to plot colormap and red color
 
     outputs:
@@ -26,12 +27,17 @@ def color_scheme(show: bool = False) -> Tuple[list[str], str, Colormap]:
     """
 
     # Define the custom color scheme as a colormap
+    if scheme == "mine":
+        colors_lst = ['#4500E0', '#54CCE0', '#CD23E1', '#9EE1B1', '#E04F68']
+        red = '#E04F68'
+        # Create the custom colormap for the gradient
+        custom_cmap = LinearSegmentedColormap.from_list('custom_cmap', [colors_lst[1], colors_lst[2], colors_lst[0]], N=256)
+    elif scheme == "Leon":
+        colors_lst = ['#971b1e', '#e21f27', '#2d679f', '#88d5ee', '#bde3f8']
+        red = '#F26667'
+        custom_cmap = LinearSegmentedColormap.from_list('custom_cmap', [colors_lst[1], colors_lst[2], colors_lst[3]], N=256)
 
-    colors_lst = ['#4500E0', '#54CCE0', '#CD23E1', '#9EE1B1', '#E04F68']
-    red = '#E04F68'
-
-    # Create the custom colormap for the gradient
-    custom_cmap = LinearSegmentedColormap.from_list('custom_cmap', [colors_lst[1], colors_lst[2], colors_lst[0]], N=256)
+    
 
     if show:
         # Create a gradient and plot it with log scale on the y-axis
