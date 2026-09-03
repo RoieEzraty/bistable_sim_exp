@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+plt.rcParams["pdf.fonttype"] = 42
+
 from IPython.display import HTML
 from matplotlib import patches
 from matplotlib.axes import Axes
