@@ -5,7 +5,8 @@ import numpy as np
 
 import plot_funcs, colors
 
-file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
+# file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
+file_prelim = r"C:\Users\roiee\OneDrive - huji.ac.il\ORIGAMI"
 
 # %% ====== Compare ======
 importlib.reload(plot_funcs)
@@ -100,21 +101,12 @@ plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_
 # %% ====== Force along trajectory: graph only ======
 importlib.reload(plot_funcs)
 
-# Choose the experiment and simulation CSV files here.
+# # Choose the experiment and simulation CSV files here.
 csv_file_path_exp = file_prelim + r"\paper\Setup\Setup data\F along traj.csv"
 csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
-plot_funcs.plot_force_along_traj(
-    csv_file_path=csv_file_path_exp,
-    csv_file_path_sim=csv_file_path_sim,
-    graph_only=True,
-    experiment_error=10.0,
-    save="pdf",
-    scale_y=False,
-    range_y = True,
-    y_lims=(-180, 420),
-    font_size=20,
-    plot_final_force_lines=True,
-)
+plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_exp, csv_file_path_sim=csv_file_path_sim, graph_only=True, 
+                                 experiment_error=10.0, save="pdf", scale_y=False, range_y = True, y_lims=(-180, 420), font_size=20,
+                                 plot_final_force_lines=True, sims_as_markers=True, error_style = "None")
 
 # y_lims=(-120, 350)
 
@@ -141,6 +133,25 @@ plot_funcs.plot_force_along_traj(
 #     scale_y=False,
 #     y_lims=y_lims
 # )
+
+# %% ====== Force along trajectory: average only ======
+
+importlib.reload(plot_funcs)
+
+# from 0011->1000 experiment, in \\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\0011to1000.csv
+buckle = "1011"
+average_fx_1011 = 129.1
+average_fy_1011 = -18.6
+plot_funcs.plot_average_force_along_traj(
+    average_fx_1011, average_fy_1011, buckle=buckle, save=True
+)
+
+buckle = "1010"
+average_fx_1010 = 166.7
+average_fy_1010 = 10.6
+plot_funcs.plot_average_force_along_traj(
+    average_fx_1010, average_fy_1010, buckle=buckle, save=True
+)
 
 # %% ====== Trajectory positions ======
 importlib.reload(plot_funcs)

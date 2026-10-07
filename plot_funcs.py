@@ -325,14 +325,22 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             plot_force_along_traj(exp_path, csv_file_path_sim=sim_path,
                                   graph_only=True, save=False, ax_force=ax,
                                   font_size=font_size, marker_size=marker_size,
-                                  line_width=line_width)
+                                  line_width=line_width,
+                                  plot_average_force_lines=True)
         traj_axes[1].get_legend().remove()
         traj_axes[1].set_ylabel("")
     axs[2, 0].set_xlabel("t", fontsize=font_size)
 
     # ====== bottom: MSE loss ======
-    loss_axes = ([axs[2, 1], axs[2, 1].twinx()] if position_mode
-                 else [axs[2, 1], axs[2, 1]])
+    if position_mode:
+        loss_spec = axs[2, 1].get_subplotspec()
+        fig.delaxes(axs[2, 1])
+        loss_grid = loss_spec.subgridspec(2, 1, hspace=0.08)
+        loss_axes = [fig.add_subplot(loss_grid[0, 0])]
+        loss_axes.append(fig.add_subplot(loss_grid[1, 0], sharex=loss_axes[0]))
+        loss_axes[0].tick_params(axis="x", labelbottom=False)
+    else:
+        loss_axes = [axs[2, 1], axs[2, 1]]
     loss_lines = []
     for col, (ax, loss, t, T) in enumerate(zip(
             loss_axes, (loss_MSE_exp, loss_MSE_sim), times, Ts)):
@@ -342,11 +350,17 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         loss_lines.append(ax.plot(t, loss[1:T], color=colors_lst[2], label=label, **style)[0])
         ax.plot(t, np.zeros(len(t)), color=colors_lst[2], linestyle="--")
         ax.set_ylim(loss_lims[col])
-    loss_axes[0].set_xlabel("t", fontsize=font_size)
-    loss_axes[1].set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
-    loss_axes[1].yaxis.set_label_position("right")
-    loss_axes[0].legend(loss_lines, [line.get_label() for line in loss_lines],
-                        ncol=1, **legend_kw)
+    for ax in dict.fromkeys(loss_axes):
+        ax.yaxis.tick_right()
+        ax.yaxis.set_label_position("right")
+        ax.set_ylabel(r"$\mathcal{L}$", fontsize=font_size)
+    loss_axes[-1].set_xlabel("t", fontsize=font_size)
+    if position_mode:
+        for ax, line in zip(loss_axes, loss_lines):
+            ax.legend([line], [line.get_label()], ncol=1, **legend_kw)
+    else:
+        loss_axes[0].legend(loss_lines, [line.get_label() for line in loss_lines],
+                            ncol=1, **legend_kw)
 
     # ====== titles ======
     axs[0, 0].set_title("Experiment", fontsize=font_size)
@@ -355,7 +369,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     # ====== legend ======
     # ====== locator + layout ======
     axs[-1, 0].xaxis.set_major_locator(MaxNLocator(integer=True))
-    axs[-1, 1].xaxis.set_major_locator(MaxNLocator(integer=True))
+    loss_axes[-1].xaxis.set_major_locator(MaxNLocator(integer=True))
 
     plt.tight_layout(w_pad=0.5)
     if save:
@@ -603,6 +617,37 @@ def plot_trajectory_positions(
     return output_path
 
 
+def plot_average_force_along_traj(
+    fx_average: float,
+    fy_average: float,
+    buckle: str,
+    save: bool = False,
+) -> Optional[Path]:
+    """Plot average experimental forces and optionally save them as a PDF."""
+    fx_average = float(fx_average)
+    fy_average = float(fy_average)
+    if not np.isfinite(fx_average) or not np.isfinite(fy_average):
+        raise ValueError("Average force values must be finite numbers.")
+
+    font_size = 18
+    line_width = 1.0
+    fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=180, constrained_layout=True)
+    ax_force.axhline(fx_average, color=colors_lst[2], linestyle="-",
+                     linewidth=line_width, label=r"$F_x$")
+    ax_force.axhline(fy_average, color=colors_lst[1], linestyle="-",
+                     linewidth=line_width, label=r"$F_y$")
+    ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
+    ax_force.set_xticks([])
+    ax_force.tick_params(axis="both", labelsize=font_size)
+    ax_force.legend(loc="best", ncol=2, fontsize=font_size)
+    ax_force.set_ylim([-120,240])
+    output_path = Path.cwd() / f"average_F_{buckle}.pdf"
+    if save:
+        fig.savefig(output_path)
+    plt.show()
+    return output_path if save else None
+
+
 def plot_force_along_traj(
     csv_file_path: Union[str, Path],
     vid_path: Optional[Union[str, Path]] = None,
@@ -624,12 +669,14 @@ def plot_force_along_traj(
     y_lims: Tuple[float, float] = (-130.0, 250.0),
     font_size: float = 18,
     line_width: float = 3.0,
-    marker_size: float = 9.0,
+    marker_size: float = 14.0,
     errorbar_line_width: float = 2.0,
     errorbar_capsize: float = 4.0,
     error_style: str = "shaded",
     plot_final_force_lines: bool = False,
+    plot_average_force_lines: bool = False,
     ax_force: Optional[Axes] = None,
+    sims_as_markers: Optional[bool] = False,
 ) -> Path:
     """
     Plot ``F_x``/``F_y`` as a function of ``y_tip``.
@@ -643,7 +690,9 @@ def plot_force_along_traj(
     solid lines without error bars. Set ``save="pdf"`` to save a standalone
     graph as PDF in the current working directory; ``save=True`` keeps the
     default PNG output there. Set ``plot_final_force_lines=True`` to add
-    dashed horizontal lines at the final experimental force values.
+    dashed horizontal lines at the final experimental force values. Set
+    ``plot_average_force_lines=True`` to add thin solid horizontal lines at
+    the average experimental force values.
 
     The force curves start growing at ``initial_time_s`` in the source video and
     finish at ``final_time_s``. Once all trajectory points are shown, mean-force
@@ -670,9 +719,8 @@ def plot_force_along_traj(
     if mean_line_mode not in {"des", "meas"}:
         raise ValueError('mean_line_mode must be either "des" or "meas".')
     mean_linestyle = ":" if mean_line_mode == "des" else "-"
-    error_style = error_style.lower()
-    if error_style not in {"shaded", "bars"}:
-        raise ValueError('error_style must be either "shaded" or "bars".')
+    if error_style not in {"shaded", "bars", "None"}:
+        raise ValueError('error_style must be either "shaded", "bars", or "None".')
 
     col_candidates = {
         "y": ("y_tip", "y", "Position_y"),
@@ -723,7 +771,7 @@ def plot_force_along_traj(
         # colors_lst, _, _ = colors.color_scheme()
         standalone = ax_force is None
         if standalone:
-            fig, ax_force = plt.subplots(figsize=(7, 3.5), dpi=dpi, constrained_layout=True)
+            fig, ax_force = plt.subplots(figsize=(7, 5), dpi=dpi, constrained_layout=True)
         else:
             fig = ax_force.figure
 
@@ -744,7 +792,7 @@ def plot_force_along_traj(
                 y, fy, ".", color=colors_lst[1], markersize=marker_size,
                 label="_nolegend_",
             )
-        else:
+        elif error_style == "bars":
             errorbar_style = {
                 "fmt": ".",
                 "linestyle": "none",
@@ -761,15 +809,29 @@ def plot_force_along_traj(
                 y, fy, yerr=experiment_error, color=colors_lst[1],
                 label="_nolegend_", **errorbar_style,
             )
-        ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
-                      label="_nolegend_")
-        ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
-                      label="_nolegend_")
+        else:
+            ax_force.plot(y, fx, color=colors_lst[2], marker="*", markersize=marker_size+4, linestyle="None", label=r"$F_{x,\text{exp}}$")
+            ax_force.plot(y, fy, color=colors_lst[1], marker="*", markersize=marker_size+4, linestyle="None", label=r"$F_{y,\text{exp}}$")
+        if not sims_as_markers:
+            ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
+                        label="_nolegend_")
+            ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
+                        label="_nolegend_")
+        else:
+            # ax_force.plot(y_sim, fx_sim, color=colors_lst[2], marker="o", markerfacecolor='none', linestyle="None", label="_nolegend_")
+            # ax_force.plot(y_sim, fy_sim, color=colors_lst[1], marker="o", markerfacecolor='none', linestyle="None", label="_nolegend_")
+            ax_force.plot(y_sim, fx_sim, color=colors_lst[2], marker="o", markersize=marker_size, linestyle="None", label=r"$F_{x,\text{sim}}$")
+            ax_force.plot(y_sim, fy_sim, color=colors_lst[1], marker="o", markersize=marker_size, linestyle="None", label=r"$F_{y,\text{sim}}$")
         if plot_final_force_lines:
             ax_force.axhline(fx[-1], color=colors_lst[2], linestyle="--",
                              linewidth=line_width, label="_nolegend_")
             ax_force.axhline(fy[-1], color=colors_lst[1], linestyle="--",
                              linewidth=line_width, label="_nolegend_")
+        if plot_average_force_lines:
+            ax_force.axhline(np.mean(fx), color=colors_lst[2], linestyle="-",
+                             linewidth=1.0, label="_nolegend_")
+            ax_force.axhline(np.mean(fy), color=colors_lst[1], linestyle="-",
+                             linewidth=1.0, label="_nolegend_")
         if range_y:
             ax_force.set_xlabel("step", fontsize=font_size)
         else:
@@ -780,16 +842,21 @@ def plot_force_along_traj(
         if range_y:
             ax_force.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax_force.set_ylim(y_lims)
-        legend_handles = [
-            Line2D([0], [0], color=colors_lst[2], linewidth=line_width, marker=".",
-                   markersize=marker_size,
-                   label=r"$F_x$"),
-            Line2D([0], [0], color=colors_lst[1], linewidth=line_width, marker=".",
-                   markersize=marker_size,
-                   label=r"$F_y$"),
-        ]
-        ax_force.legend(handles=legend_handles, loc="best", ncol=2,
-                        fontsize=font_size if standalone else font_size-3)
+        if not sims_as_markers:
+            legend_linestyle = "-" if line_width > 0 and not sims_as_markers else "None"
+            legend_marker = "." if line_width > 0 else "o"
+            legend_handles = [
+                Line2D([0], [0], color=colors_lst[2], linewidth=line_width,
+                    linestyle=legend_linestyle, marker=legend_marker,
+                    markersize=marker_size, label=r"$F_x$"),
+                Line2D([0], [0], color=colors_lst[1], linewidth=line_width,
+                    linestyle=legend_linestyle, marker=legend_marker,
+                    markersize=marker_size, label=r"$F_y$"),
+            ]
+            ax_force.legend(handles=legend_handles, loc="best", ncol=2,
+                            fontsize=font_size if standalone else font_size-3)
+        else:
+            ax_force.legend(loc="best", ncol=2, fontsize=font_size if standalone else font_size-3)
 
         if save:
             output_path.parent.mkdir(parents=True, exist_ok=True)
