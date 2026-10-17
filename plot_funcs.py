@@ -677,6 +677,7 @@ def plot_force_along_traj(
     plot_average_force_lines: bool = False,
     ax_force: Optional[Axes] = None,
     sims_as_markers: Optional[bool] = False,
+    size_scale: float = 0.5,
 ) -> Path:
     """
     Plot ``F_x``/``F_y`` as a function of ``y_tip``.
@@ -700,7 +701,20 @@ def plot_force_along_traj(
     ``mean_line_mode="meas"``. When ``mean_line_mode="meas"`` and
     ``csv_file_path_des`` is supplied, dotted desired mean-force lines are
     overlaid too.
+
+    ``size_scale`` scales the figure dimensions, fonts, markers, and line/error
+    bar sizes. The default of ``0.5`` makes these visual elements half size.
     """
+    if size_scale <= 0:
+        raise ValueError("size_scale must be greater than zero.")
+    requested_font_size = font_size
+    font_size *= size_scale
+    embedded_legend_font_size = max((requested_font_size - 3) * size_scale, 1.0)
+    line_width *= size_scale
+    marker_size *= size_scale
+    errorbar_line_width *= size_scale
+    errorbar_capsize *= size_scale
+
     csv_path = Path(csv_file_path)
     if output_path is None:
         graph_suffix = ".pdf" if save == "pdf" else ".png"
@@ -771,7 +785,11 @@ def plot_force_along_traj(
         # colors_lst, _, _ = colors.color_scheme()
         standalone = ax_force is None
         if standalone:
-            fig, ax_force = plt.subplots(figsize=(7, 5), dpi=dpi, constrained_layout=True)
+            fig, ax_force = plt.subplots(
+                figsize=(7 * size_scale, 5 * size_scale),
+                dpi=dpi,
+                constrained_layout=True,
+            )
         else:
             fig = ax_force.figure
 
@@ -810,8 +828,8 @@ def plot_force_along_traj(
                 label="_nolegend_", **errorbar_style,
             )
         else:
-            ax_force.plot(y, fx, color=colors_lst[2], marker="*", markersize=marker_size+4, linestyle="None", label=r"$F_{x,\text{exp}}$")
-            ax_force.plot(y, fy, color=colors_lst[1], marker="*", markersize=marker_size+4, linestyle="None", label=r"$F_{y,\text{exp}}$")
+            ax_force.plot(y, fx, color=colors_lst[2], marker="*", markersize=marker_size + 4 * size_scale, linestyle="None", label=r"$F_{x,\text{exp}}$")
+            ax_force.plot(y, fy, color=colors_lst[1], marker="*", markersize=marker_size + 4 * size_scale, linestyle="None", label=r"$F_{y,\text{exp}}$")
         if not sims_as_markers:
             ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
                         label="_nolegend_")
@@ -829,9 +847,9 @@ def plot_force_along_traj(
                              linewidth=line_width, label="_nolegend_")
         if plot_average_force_lines:
             ax_force.axhline(np.mean(fx), color=colors_lst[2], linestyle="-",
-                             linewidth=1.0, label="_nolegend_")
+                             linewidth=1.0 * size_scale, label="_nolegend_")
             ax_force.axhline(np.mean(fy), color=colors_lst[1], linestyle="-",
-                             linewidth=1.0, label="_nolegend_")
+                             linewidth=1.0 * size_scale, label="_nolegend_")
         if range_y:
             ax_force.set_xlabel("step", fontsize=font_size)
         else:
@@ -854,9 +872,12 @@ def plot_force_along_traj(
                     markersize=marker_size, label=r"$F_y$"),
             ]
             ax_force.legend(handles=legend_handles, loc="best", ncol=2,
-                            fontsize=font_size if standalone else font_size-3)
+                            fontsize=font_size if standalone else embedded_legend_font_size)
         else:
-            ax_force.legend(loc="best", ncol=2, fontsize=font_size if standalone else font_size-3)
+            ax_force.legend(
+                loc="best", ncol=2,
+                fontsize=font_size if standalone else embedded_legend_font_size,
+            )
 
         if save:
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -900,7 +921,11 @@ def plot_force_along_traj(
     if final_time_s < initial_time_s:
         raise ValueError("final_time_s must be greater than or equal to initial_time_s.")
 
-    fig = plt.figure(figsize=(11.5, 5.2), dpi=dpi, constrained_layout=True)
+    fig = plt.figure(
+        figsize=(11.5 * size_scale, 5.2 * size_scale),
+        dpi=dpi,
+        constrained_layout=True,
+    )
 
     def draw_frame(video_frame_bgr: NDArray[np.uint8], plot_idx: int, show_means: bool) -> NDArray[np.uint8]:
         fig.clear()
@@ -922,14 +947,15 @@ def plot_force_along_traj(
 
         upto = max(0, min(plot_idx + 1, len(y)))
         current_suffix = "des" if mean_line_mode == "des" else "meas"
-        ax_force.plot(y[:upto], fx[:upto], color=colors_lst[2], marker="o")
-        ax_force.plot(y[:upto], fy[:upto], color=colors_lst[1], marker="o")
+        video_marker_size = 6.0 * size_scale
+        ax_force.plot(y[:upto], fx[:upto], color=colors_lst[2], marker="o", markersize=video_marker_size)
+        ax_force.plot(y[:upto], fy[:upto], color=colors_lst[1], marker="o", markersize=video_marker_size)
         if mean_line_mode == "meas" and des_means is not None:
-            ax_force.axhline(des_means[0], color=colors_lst[2], linestyle=":", linewidth=2.0)
-            ax_force.axhline(des_means[1], color=colors_lst[1], linestyle=":", linewidth=2.0)
+            ax_force.axhline(des_means[0], color=colors_lst[2], linestyle=":", linewidth=2.0 * size_scale)
+            ax_force.axhline(des_means[1], color=colors_lst[1], linestyle=":", linewidth=2.0 * size_scale)
         if show_means:
-            ax_force.axhline(fx_mean, color=colors_lst[2], linestyle=mean_linestyle, linewidth=2.0)
-            ax_force.axhline(fy_mean, color=colors_lst[1], linestyle=mean_linestyle, linewidth=2.0)
+            ax_force.axhline(fx_mean, color=colors_lst[2], linestyle=mean_linestyle, linewidth=2.0 * size_scale)
+            ax_force.axhline(fy_mean, color=colors_lst[1], linestyle=mean_linestyle, linewidth=2.0 * size_scale)
 
         ax_force.set_xlim(x_lims)
         ax_force.set_ylim(force_lims)
@@ -937,9 +963,9 @@ def plot_force_along_traj(
         ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
         ax_force.tick_params(axis="both", labelsize=font_size)
         legend_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle=mean_linestyle, marker="o",
+            Line2D([0], [0], color=colors_lst[2], linestyle=mean_linestyle, marker="o", markersize=video_marker_size,
                    label=rf"$F_{{x}}\ \mathrm{{{'measured' if current_suffix == 'meas' else 'desired'}}}$"),
-            Line2D([0], [0], color=colors_lst[1], linestyle=mean_linestyle, marker="o",
+            Line2D([0], [0], color=colors_lst[1], linestyle=mean_linestyle, marker="o", markersize=video_marker_size,
                    label=rf"$F_{{y}}\ \mathrm{{{'measured' if current_suffix == 'meas' else 'desired'}}}$"),
         ]
         if mean_line_mode == "meas" and des_means is not None:
@@ -1351,10 +1377,7 @@ def training_force_data_and_vid(
         return [int(part) if part.isdigit() else part for part in parts]
 
     def image_files_in_dir(path: Path) -> List[Path]:
-        return sorted(
-            [item for item in path.iterdir() if item.is_file() and item.suffix.lower() in image_exts],
-            key=natural_key,
-        )
+        return sorted([item for item in path.iterdir() if item.is_file() and item.suffix.lower() in image_exts], key=natural_key)
 
     def find_image_dir_for_csv(csv_path: Path, fallback_dirs: List[Path]) -> Optional[Path]:
         if image_files_in_dir(csv_path.parent):
@@ -1380,10 +1403,7 @@ def training_force_data_and_vid(
             out_path = Path(output_path) if output_path is not None else csv_path.with_name(f"{csv_path.stem}_training_vid.mp4")
             return [(csv_path, img_dir, out_path)]
 
-        csv_paths = [
-            path for path in training_dir.rglob("*.csv")
-            if "dataset" not in path.stem.lower() and re.search(r"[01]+to[01]+", path.stem)
-        ]
+        csv_paths = [path for path in training_dir.rglob("*.csv") if "dataset" not in path.stem.lower() and re.search(r"[01]+to[01]+", path.stem)]
         csv_paths = sorted(csv_paths, key=natural_key)
         image_dirs = [
             path for path in training_dir.rglob("*")
@@ -1468,10 +1488,10 @@ def training_force_data_and_vid(
 
         ax_force = axes[0]
         measured_desired_cols = [
-            ("F_x_meas", colors_lst[2], "-", r"$F_x$ meas."),
-            ("F_y_meas", colors_lst[1], "-", r"$F_y$ meas."),
-            ("F_x_des", colors_lst[2], "--", r"$F_x$ des."),
-            ("F_y_des", colors_lst[1], "--", r"$F_y$ des."),
+            ("F_x_meas", colors_lst[2], "-", r"$F_x$"),
+            ("F_y_meas", colors_lst[1], "-", r"$F_y$"),
+            ("F_x_des", colors_lst[2], "--", r"$\hat{F}_x$"),
+            ("F_y_des", colors_lst[1], "--", r"$\hat{F}_y$"),
         ]
         for col, color, linestyle, label in measured_desired_cols:
             if col in df.columns:
@@ -1479,7 +1499,7 @@ def training_force_data_and_vid(
                 ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle,
                               marker="o", markerfacecolor="none" if is_desired else color,
                               markeredgecolor=color, alpha=0.8, label=label)
-        ax_force.set_ylabel(r"$F_{meas}\,\left[mN\right]$", fontsize=font_size)
+        ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
         ax_force.set_ylim(axis_lims["measured_desired_force"])
         ax_force.legend(loc="best", ncol=2, fontsize=8)
 
@@ -1494,13 +1514,13 @@ def training_force_data_and_vid(
         ax_update = axes[2]
         ax_angle = ax_update.twinx()
         ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                       label=r"$x_{tip}$ update")
+                       label=r"$x^{\,!}$")
         ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                       label=r"$y_{tip}$ update")
+                       label=r"$y^{\,!}$")
         ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o",
-                      label=r"$\theta_{tip}$ update")
-        ax_update.set_ylabel(r"update pos $\left[m\right]$", fontsize=font_size)
-        ax_angle.set_ylabel(r"update angle $\left[\degree\right]$", fontsize=font_size)
+                      label=r"$\theta^{\,!}$")
+        ax_update.set_ylabel(r"trajectory position$\left[m\right]$", fontsize=font_size)
+        ax_angle.set_ylabel(r"trajectory angle$\left[\degree\right]$", fontsize=font_size)
         ax_update.set_ylim(axis_lims["position"])
         ax_angle.set_ylim(axis_lims["angle"])
         pos_lines, pos_labels = ax_update.get_legend_handles_labels()
@@ -1510,10 +1530,10 @@ def training_force_data_and_vid(
         next_axis_idx = 3
         ax_update_force = axes[next_axis_idx]
         ax_update_force.plot(t, df["F_x_update"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                             label=r"$F_x$ update")
+                             label=r"$F_x^{\,!}$")
         ax_update_force.plot(t, df["F_y_update"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                             label=r"$F_y$ update")
-        ax_update_force.set_ylabel(r"$F_{update}\,\left[mN\right]$", fontsize=font_size)
+                             label=r"$F_y^{\,!}$")
+        ax_update_force.set_ylabel(r"$F^{\,!}\,\left[mN\right]$", fontsize=font_size)
         ax_update_force.set_ylim(axis_lims["update_force"])
         ax_update_force.legend(loc="best", ncol=2, fontsize=8)
         next_axis_idx += 1
@@ -1818,20 +1838,12 @@ def training_pos_data_and_vid(
         ax_meas_des_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
         ax_meas_des.set_ylim(axis_lims["measured_desired_position"])
         ax_meas_des_angle.set_ylim(axis_lims["measured_desired_angle"])
-        meas_des_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o",
-                   markerfacecolor=colors_lst[2], markeredgecolor=colors_lst[2], label=r"$x$ meas."),
-            Line2D([0], [0], color=colors_lst[2], linestyle="--", marker="o",
-                   markerfacecolor="none", markeredgecolor=colors_lst[2], label=r"$x$ des."),
-            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o",
-                   markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1], label=r"$y$ meas."),
-            Line2D([0], [0], color=colors_lst[1], linestyle="--", marker="o",
-                   markerfacecolor="none", markeredgecolor=colors_lst[1], label=r"$y$ des."),
-            Line2D([0], [0], color=red, linestyle="-", marker="o",
-                   markerfacecolor=red, markeredgecolor=red, label=r"$\theta$ meas."),
-            Line2D([0], [0], color=red, linestyle="--", marker="o",
-                   markerfacecolor="none", markeredgecolor=red, label=r"$\theta$ des.")
-        ]
+        meas_des_handles = [Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", markerfacecolor=colors_lst[2], markeredgecolor=colors_lst[2], label=r"$x^{\text{eq}}$"),
+                            Line2D([0], [0], color=colors_lst[2], linestyle="--", marker="o", markerfacecolor="none", markeredgecolor=colors_lst[2], label=r"$\hat{x}^{\text{eq}}$"),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1], label=r"$y^{\text{eq}}$"),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="--", marker="o", markerfacecolor="none", markeredgecolor=colors_lst[1], label=r"$\hat{y}^{\text{eq}}$"),
+                            Line2D([0], [0], color=red, linestyle="-", marker="o", markerfacecolor=red, markeredgecolor=red, label=r"$\theta^{\text{eq}}$"),
+                            Line2D([0], [0], color=red, linestyle="--", marker="o", markerfacecolor="none", markeredgecolor=red, label=r"$\hat{\theta}^{\text{eq}}$")]
         ax_meas_des.legend(handles=meas_des_handles, loc="best", ncol=3, fontsize=8)
 
         ax_loss = axes[1]
@@ -1845,14 +1857,14 @@ def training_pos_data_and_vid(
         ax_update = axes[2]
         ax_update_angle = ax_update.twinx()
         ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                       label=r"$x$ update")
+                       label=r"$x^{\,!}$")
         ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                       label=r"$y$ update")
+                       label=r"$y^{\,!}$")
         ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o",
-                             label=r"$\theta$ update")
+                             label=r"$\theta^{\,!}$")
         ax_update.set_xlabel("t", fontsize=font_size)
-        ax_update.set_ylabel(r"pos $\left[m\right]$", fontsize=font_size)
-        ax_update_angle.set_ylabel(r"angle $\left[\degree\right]$", fontsize=font_size)
+        ax_update.set_ylabel(r"trajectory position $\left[m\right]$", fontsize=font_size)
+        ax_update_angle.set_ylabel(r"trajectory angle $\left[\degree\right]$", fontsize=font_size)
         ax_update.set_ylim(axis_lims["update_position"])
         ax_update_angle.set_ylim(axis_lims["update_angle"])
         lines, labels = ax_update.get_legend_handles_labels()
@@ -1923,7 +1935,7 @@ def training_pos_data_and_vid(
 
             frame_number, meas_image, update_image = frame_entries[frame]
             show_image(ax_meas, meas_image, "measured")
-            show_image(ax_update, update_image, "update")
+            show_image(ax_update, update_image, "trajectory")
             show_image(ax_des, des_image, "desired")
             plot_position_snapshot(fig, plot_axes, df, frame, axis_lims)
             fig.canvas.draw()
@@ -1974,3 +1986,41 @@ def training_pos_data_and_vid(
         saved_paths.append(out_path)
 
     return saved_paths
+
+def plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, exp_labels, sim_labels, buckle_str, err=0.01*1e3, save="pdf", font_size=20):
+
+    handles = []
+    labels = []
+
+    y_pos = x_y_theta_vec_exp[0][:, 1]
+
+    for i, label in enumerate(exp_labels):
+        h1 = plt.errorbar(y_pos, F_vec_exp[i][:, 0], yerr=err,
+                        color=colors_lst[i], fmt='.', linestyle='--')
+        h2 = plt.errorbar(y_pos, F_vec_exp[i][:, 1], yerr=err,
+                        color=colors_lst[i], fmt='.', linestyle='--')
+
+        # h1/h2 are ErrorbarContainer; legend wants the main line:
+        handles += [h1.lines[0], h2.lines[0]]
+        labels  += [label, ""]   # keep your blank entry trick
+
+    for i in range(3):
+        l1, = plt.plot(y_pos, F_vec_sim[i][:, 0], color=colors_lst[i], linestyle='-')
+        l2, = plt.plot(y_pos, F_vec_sim[i][:, 1], color=colors_lst[i], linestyle='-')
+        handles += [l1, l2]
+        labels  += [sim_labels[i], ""]
+
+    ax = plt.gca()
+    ax.legend(handles, labels, loc='center left', bbox_to_anchor=(1.02, 0.5), frameon=False)
+    ax.set_clip_on(False)
+    ax.set_title(f"buckle={buckle_str}")
+    plt.ylabel('F [mN]')
+    plt.ylim([-160, 390])
+    plt.xlabel('y [mm]')
+    plt.tight_layout()
+    
+    if save:
+        output_path = f"{buckle_str}_comparison.pdf"
+        with plt.rc_context({"pdf.fonttype": 42}):
+            plt.savefig(output_path, format="pdf", bbox_inches="tight")
+    plt.show()

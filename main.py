@@ -3,7 +3,7 @@
 import importlib
 import numpy as np
 
-import plot_funcs, colors
+import plot_funcs, colors, file_helpers
 
 # file_prelim = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI"
 file_prelim = r"C:\Users\roiee\OneDrive - huji.ac.il\ORIGAMI"
@@ -44,13 +44,8 @@ sim_force_2_path = file_prelim + r"\Bistable shape acquisition jax\Predetermined
 # sim_file_prelim = "Bistable shape acquisition jax\\Training\\\June6_May22singleHinge2ndEnd_May27shortArcTraj\\"
 # exp_file_path = exp_file_prelim + r"combined.csv".format(init_buckle, desired_buckle)
 
-plot_funcs.plot_compare_sim_exp_training(
-    exp_file_path, sim_file_path, final_t, save, mod=mod, share_t=share_t, font_size=font_size,
-    force_traj_files=[
-        (exp_force_1_path, sim_force_1_path),
-        (exp_force_2_path, sim_force_2_path),
-    ],
-)
+plot_funcs.plot_compare_sim_exp_training(exp_file_path, sim_file_path, final_t, save, mod=mod, share_t=share_t, font_size=font_size, force_traj_files=[(exp_force_1_path, sim_force_1_path),
+                                                                                                                                                       (exp_force_2_path, sim_force_2_path),])
 
 # %% ====== Single ======
 
@@ -63,8 +58,17 @@ plot_funcs.plot_sim_or_exp(file_path, mod="pos", final_t=final_t, save=save)
 # %% ====== Training through force video ======
 
 importlib.reload(plot_funcs)
-csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
-images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
+# csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
+# images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
+
+# 0011-1000
+# csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\0011to1000.csv"
+# images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\pics"
+
+# 1100-0101 
+csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101_pos3.csv"
+images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101Training_filmJustUpdate"
+
 plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
 
 
@@ -72,9 +76,14 @@ plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_
 
 importlib.reload(plot_funcs)
 
-csv_file_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
-pics_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
-plot_funcs.training_pos_data_and_vid(csv_file_path=csv_file_path, pics_dir=pics_dir, infer_image_sequence=True, fps=2)
+# csv_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
+# images_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
+
+# 1111-1101 through pos
+csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\1111to1101.csv"
+images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\pics"
+
+plot_funcs.training_pos_data_and_vid(csv_file_path=csv_path, pics_dir=images_dir, infer_image_sequence=True, fps=2)
 
 # %% ====== Force along trajectory ======
 
@@ -174,4 +183,172 @@ vid_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\tr
 
 plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=10.0,
                                         final_time_vid=83.0, final_time_csv=10, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
+# %% ====== Force along trajectory Sim Exp comparison ======
+
+importlib.reload(plot_funcs)
+importlib.reload(file_helpers)
+
+# buckle = 1101
+
+buckle_str = "1101"
+
+path_exp_1 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Feb26/1101/buckle=1101.csv'
+path_exp_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar9/filled chain/buckle=1101.csv'
+path_exp_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar12/dL90/buckle=1101.csv'
+
+exp_labels = [r'$d/L=0.75$ 1st exp', r'$d/L=0.75$ 2nd exp', r'$d/L=0.90$ exp' ]
+
+err=0.01*1e3
+
+x_y_theta_vec_exp = []
+F_vec_exp = []
+for i, path in enumerate([path_exp_1, path_exp_2, path_exp_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    x_y_theta_vec_exp.append(np.array([r["pos"] for r in rows], dtype=float))
+    F_vec_exp.append(np.array([r["force"] for r in rows], dtype=float))
+    if path == 'data/measurements/Feb17/x=160_buckle=0001/x=160_buckle=0001.csv':
+        F_vec_exp[i] = 1e3 * F_vec_exp[i]
+
+y_pos = y_pos = x_y_theta_vec_exp[0][:, 1]
+
+
+path_sim_1 = 'C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Bistable shape acquisition jax\\Predetermined trajectory\\Feb26\\L=pt046 tip 5mm left\\L=0.046_buckle[ 1  1 -1  1].csv'
+path_sim_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar9/9Mar filled shim/buckle=1101.csv'
+path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=1101.csv'
+# path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=1101_2.csv'
+
+
+sim_labels = [r'$d/L=0.75$ 1st sim', r'$d/L=0.75$ 2nd sim', r'$d/L=0.90$ sim']
+
+F_vec_sim = []
+for i, path in enumerate([path_sim_1, path_sim_2, path_sim_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    F_vec_sim.append(np.array([r["force"] for r in rows], dtype=float))
+
+plot_funcs.plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, exp_labels, sim_labels, buckle_str, err=err)
+
+# %%
+
+importlib.reload(plot_funcs)
+importlib.reload(file_helpers)
+
+# buckle = 0001
+
+buckle_str = "0001"
+
+path_exp_1 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Feb26/0001/buckle=0001.csv'
+path_exp_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar9/filled chain/buckle=0001.csv'
+path_exp_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar12/dL90/buckle=0001.csv'
+
+exp_labels = [r'$d/L=0.75$ 1st exp', r'$d/L=0.75$ 2nd exp', r'$d/L=0.90$ exp' ]
+
+err=0.01*1e3
+
+x_y_theta_vec_exp = []
+F_vec_exp = []
+for i, path in enumerate([path_exp_1, path_exp_2, path_exp_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    x_y_theta_vec_exp.append(np.array([r["pos"] for r in rows], dtype=float))
+    F_vec_exp.append(np.array([r["force"] for r in rows], dtype=float))
+    if path == 'data/measurements/Feb17/x=160_buckle=0001/x=160_buckle=0001.csv':
+        F_vec_exp[i] = 1e3 * F_vec_exp[i]
+
+y_pos = y_pos = x_y_theta_vec_exp[0][:, 1]
+
+
+path_sim_1 = 'C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Bistable shape acquisition jax\\Predetermined trajectory\\Feb27\\0001\\L=0.045_buckle[-1 -1 -1  1].csv'
+path_sim_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar9/9Mar filled shim/buckle=0001.csv'
+path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=0001.csv'
+# path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=0001_2.csv'
+
+
+sim_labels = [r'$d/L=0.75$ 1st sim', r'$d/L=0.75$ 2nd sim', r'$d/L=0.90$ sim']
+
+F_vec_sim = []
+for i, path in enumerate([path_sim_1, path_sim_2, path_sim_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    F_vec_sim.append(np.array([r["force"] for r in rows], dtype=float))
+
+plot_funcs.plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, exp_labels, sim_labels, buckle_str, err=err)
+
+# %%
+
+# buckle = 1001
+
+buckle_str = "1001"
+
+path_exp_1 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Feb26/1001/buckle=1001.csv'
+path_exp_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar9/filled chain/buckle=1001.csv'
+path_exp_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar12/dL90/buckle=1001.csv'
+
+exp_labels = [r'$d/L=0.75$ 1st exp', r'$d/L=0.75$ 2nd exp', r'$d/L=0.90$ exp' ]
+
+err=0.01*1e3
+
+x_y_theta_vec_exp = []
+F_vec_exp = []
+for i, path in enumerate([path_exp_1, path_exp_2, path_exp_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    x_y_theta_vec_exp.append(np.array([r["pos"] for r in rows], dtype=float))
+    F_vec_exp.append(np.array([r["force"] for r in rows], dtype=float))
+    if path == 'data/measurements/Feb17/x=160_buckle=0001/x=160_buckle=0001.csv':
+        F_vec_exp[i] = 1e3 * F_vec_exp[i]
+
+y_pos = y_pos = x_y_theta_vec_exp[0][:, 1]
+
+
+path_sim_1 = 'C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Bistable shape acquisition jax\\Predetermined trajectory\\Feb27\\1001\\L=0.045_buckle[ 1 -1 -1  1].csv'
+path_sim_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar9/9Mar filled shim/buckle=1001.csv'
+# path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=1001.csv'
+path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=1001_2.csv'
+
+
+sim_labels = [r'$d/L=0.75$ 1st sim', r'$d/L=0.75$ 2nd sim', r'$d/L=0.90$ sim']
+
+F_vec_sim = []
+for i, path in enumerate([path_sim_1, path_sim_2, path_sim_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    F_vec_sim.append(np.array([r["force"] for r in rows], dtype=float))
+
+plot_funcs.plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, exp_labels, sim_labels, buckle_str, err=err)
+# %%
+
+# buckle = 0010
+
+buckle_str = "0010"
+
+path_exp_1 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Feb26/0010/buckle=0010.csv'
+path_exp_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar9/filled chain/buckle=0010.csv'
+path_exp_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Meca500/data/measurements/Mar12/dL90/buckle=0010.csv'
+
+exp_labels = [r'$d/L=0.75$ 1st exp', r'$d/L=0.75$ 2nd exp', r'$d/L=0.90$ exp' ]
+
+err=0.01*1e3
+
+x_y_theta_vec_exp = []
+F_vec_exp = []
+for i, path in enumerate([path_exp_1, path_exp_2, path_exp_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    x_y_theta_vec_exp.append(np.array([r["pos"] for r in rows], dtype=float))
+    F_vec_exp.append(np.array([r["force"] for r in rows], dtype=float))
+    if path == 'data/measurements/Feb17/x=160_buckle=0001/x=160_buckle=0001.csv':
+        F_vec_exp[i] = 1e3 * F_vec_exp[i]
+
+y_pos = y_pos = x_y_theta_vec_exp[0][:, 1]
+
+
+path_sim_1 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar2/L=pt047 tip 2 mm left/0010/L=0.047_buckle0010.csv'
+path_sim_2 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar9/9Mar filled shim/buckle=0010.csv'
+# path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=0010.csv'
+path_sim_3 = 'C:/Users/roiee/OneDrive - huji.ac.il/ORIGAMI/Bistable shape acquisition jax/Predetermined trajectory/Mar12/dl=90_3/buckle=0010_2.csv'
+
+
+sim_labels = [r'$d/L=0.75$ 1st sim', r'$d/L=0.75$ 2nd sim', r'$d/L=0.90$ sim']
+
+F_vec_sim = []
+for i, path in enumerate([path_sim_1, path_sim_2, path_sim_3]):
+    rows = file_helpers.load_pos_force(path)  # uses your CSV format
+    F_vec_sim.append(np.array([r["force"] for r in rows], dtype=float))
+
+plot_funcs.plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, exp_labels, sim_labels, buckle_str, err=err)
 # %%
