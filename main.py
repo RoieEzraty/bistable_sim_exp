@@ -58,16 +58,16 @@ plot_funcs.plot_sim_or_exp(file_path, mod="pos", final_t=final_t, save=save)
 # %% ====== Training through force video ======
 
 importlib.reload(plot_funcs)
-# csv_path = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
-# images_dir = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
+csv_path = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_pos1.csv"
+images_dir = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000Training_justUpdates" 
 
 # 0011-1000
 # csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\0011to1000.csv"
 # images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June20_fullTrainingContd\\0011to1000pos2\\pics"
 
 # 1100-0101 
-csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101_pos3.csv"
-images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101Training_filmJustUpdate"
+# csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101_pos3.csv"
+# images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June19_fullTraining\\1100to0101Training_pos3_GoodButABitShort\\1100to0101Training_filmJustUpdate"
 
 plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_dir, fps=2)
 
@@ -76,12 +76,13 @@ plot_funcs.training_force_data_and_vid(csv_file_path=csv_path, image_dir=images_
 
 importlib.reload(plot_funcs)
 
-# csv_path=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
-# images_dir=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\pics"
+# 0001-1000 through pos
+csv_path=r"..\Meca500\data\training\June21_fromPos\0001to1000\0001to1000.csv"
+images_dir=r"..\Meca500\data\training\June21_fromPos\0001to1000\pics"
 
-# 1111-1101 through pos
-csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\1111to1101.csv"
-images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\pics"
+# # 1111-1101 through pos
+# csv_path = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\1111to1101.csv"
+# images_dir = "C:\\Users\\roiee\\OneDrive - huji.ac.il\\ORIGAMI\\Meca500\\data\\training\\June21_fromPos\\1111to1101\\pics"
 
 plot_funcs.training_pos_data_and_vid(csv_file_path=csv_path, pics_dir=images_dir, infer_image_sequence=True, fps=2)
 
@@ -89,47 +90,39 @@ plot_funcs.training_pos_data_and_vid(csv_file_path=csv_path, pics_dir=images_dir
 
 importlib.reload(plot_funcs)
 
-csv_file_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_fromSims.csv"
-vid_path_des = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000.mp4"
+csv_file_path_des = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_fromSims.csv"
+# vid_path_des = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000.mp4"
 # plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_s=3.0,
-#                                  final_time_s=11.0, fps=5, mean_line_mode = "des", save=True)
+#                                  final_time_s=11.0, fps=5, scale_y=True, mean_line_mode = "des", save=True)
 
+# csv_file_path_meas = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0001_fromSims.csv"
+# vid_path_meas = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0001.mp4"
+# plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=9.0,
+#                                  final_time_s=18.0, fps=5, scale_y=True,mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
+#                                  save=True)
 
-csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0001_fromSims.csv"
-vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0001.mp4"
-plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=9.0,
-                                 final_time_s=18.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
-                                 save=True)
-
-csv_file_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_measuredEnd.csv"
-vid_path_meas = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000_meas.mp4"
+csv_file_path_meas = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\buckle=0000_measuredEnd.csv"
+vid_path_meas = r"..\Meca500\data\training\June19_fullTraining\0001to0000TrainingFull_pos1_Good\0001to0000_justMeas\0000_meas.mp4"
 plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_s=4.0,
-                                 final_time_s=13.0, fps=5, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
+                                 final_time_s=13.0, fps=5, scale_y=True, mean_line_mode = "meas", csv_file_path_des = csv_file_path_des, 
                                  save=True)
 
 # %% ====== Force along trajectory: graph only ======
 importlib.reload(plot_funcs)
 
 # # Choose the experiment and simulation CSV files here.
-csv_file_path_exp = file_prelim + r"\paper\Setup\Setup data\F along traj.csv"
-csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
-plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_exp, csv_file_path_sim=csv_file_path_sim, graph_only=True, 
-                                 experiment_error=10.0, save="pdf", scale_y=False, range_y = True, y_lims=(-180, 420), font_size=20,
-                                 plot_final_force_lines=True, sims_as_markers=True, error_style = "None")
+# csv_file_path_exp = file_prelim + r"\paper\Setup\Setup data\F along traj.csv"
+# csv_file_path_sim = file_prelim + r"\paper\Setup\Setup data\F along traj sim.csv"
+# plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_exp, csv_file_path_sim=csv_file_path_sim, graph_only=True, 
+#                                  experiment_error=10.0, save="pdf", scale_y=True, range_y = True, y_lims=(-180, 420), font_size=20,
+#                                  plot_final_force_lines=True, sims_as_markers=True, error_style = "None")
 
 # y_lims=(-120, 350)
 
 # csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\June4_PredeterMay27ShortArcZeroDeg\1stEnd\0000.csv"
 # csv_file_path_sim = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\May27\short_arc\May24Chain_1stEnd\buckle=0000.csv"
-# plot_funcs.plot_force_along_traj(
-#     csv_file_path=csv_file_path_exp,
-#     csv_file_path_sim=csv_file_path_sim,
-#     graph_only=True,
-#     experiment_error=10.0,
-#     save="pdf",
-#     scale_y=True,
-#     y_lims=y_lims
-# )
+# plot_funcs.plot_force_along_traj(csv_file_path=csv_file_path_exp, csv_file_path_sim=csv_file_path_sim, graph_only=True, experiment_error=10.0, 
+#                                  save="pdf", scale_y=True, y_lims=y_lims)
 
 # csv_file_path_exp = file_prelim + r"\Meca500\data\measurements\Feb26\0001\buckle=0001_2.csv"
 # csv_file_path_sim = file_prelim + r"\Bistable shape acquisition jax\Predetermined trajectory\Mar2\L=pt047 tip 2 mm left\0001\L=0.047_buckle0001.csv"
@@ -172,17 +165,23 @@ plot_funcs.plot_trajectory_positions(csv_file_path_sim, save="pdf", font_size=20
 # %% ====== Force during zero Force ======
 importlib.reload(plot_funcs)
 
-csv_file_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\1000_des_reach_zero.csv"
-vid_path_des=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\1000zeroForce.mp4"
+# csv_file_path_des=r"..\Meca500\data\training\June21_fromPos\0001to1000\1000_des_reach_zero.csv"
+# vid_path_des=r"..\Meca500\data\training\June21_fromPos\0001to1000\vids\1000zeroForce.mp4"
 
-# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_vid=3.0,
-#                                         final_time_vid=63.0, final_time_csv=10, fps=5, mean_line_mode="des")
+# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_des, vid_path=vid_path_des, initial_time_vid=2.5,
+#                                         final_time_vid=64.0, final_time_csv=10, fps=5, mean_line_mode="des")
 
-csv_file_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\1001_meas_reach_zero.csv"
-vid_path_meas=r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos\0001to1000\vids\1001zeroForce.mp4"
+csv_file_path_meas=r"..\Meca500\data\training\June21_fromPos\0001to1000\0001_meas_reach_zero.csv"
+vid_path_meas=r"..\Meca500\data\training\June21_fromPos\0001to1000\vids\0001zeroForce.mp4"
 
 plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=10.0,
-                                        final_time_vid=83.0, final_time_csv=10, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
+                                        final_time_vid=68.0, final_time_csv=10, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
+
+# csv_file_path_meas=r"..\Meca500\data\training\June21_fromPos\0001to1000\1001_meas_reach_zero.csv"
+# vid_path_meas=r"..\Meca500\data\training\June21_fromPos\0001to1000\vids\1001zeroForce.mp4"
+
+# plot_funcs.plot_force_during_zero_force(csv_file_path=csv_file_path_meas, vid_path=vid_path_meas, initial_time_vid=10.0,
+#                                         final_time_vid=83.0, final_time_csv=10, fps=5, mean_line_mode="meas", csv_file_path_des=csv_file_path_des)
 # %% ====== Force along trajectory Sim Exp comparison ======
 
 importlib.reload(plot_funcs)

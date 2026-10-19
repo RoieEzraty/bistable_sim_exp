@@ -69,18 +69,11 @@ def time_step_lims(t_values: NDArray[np.float64], pad: float = 0.25) -> Tuple[fl
     return float(t_arr[0] - pad), float(t_arr[-1] + pad)
 
 
-def update_position_angle_lims(
-    x_update: NDArray[np.float64],
-    y_update: NDArray[np.float64],
-    angle_update: NDArray[np.float64],
-) -> dict:
+def update_position_angle_lims(x_update: NDArray[np.float64], y_update: NDArray[np.float64], angle_update: NDArray[np.float64]) -> dict:
     angle_arr = np.asarray(angle_update, dtype=float).reshape(-1)
     finite_angle = angle_arr[np.isfinite(angle_arr)]
     center_values = finite_angle[-1:] if len(finite_angle) else angle_arr[-1:]
-    return {
-        "position": padded_lims([x_update, y_update]),
-        "angle": centered_lims(center_values, [angle_update]),
-    }
+    return {"position": padded_lims([x_update, y_update]), "angle": centered_lims(center_values, [angle_update])}
 
 
 def video_writer_fps(output_path: Path, fps: int, playback_speed: float = 2.0) -> float:
@@ -89,11 +82,7 @@ def video_writer_fps(output_path: Path, fps: int, playback_speed: float = 2.0) -
     return float(fps)
 
 
-def crop_frame_edges(
-    frame: NDArray[np.uint8],
-    left_fraction: float = 0.0,
-    bottom_fraction: float = 0.0,
-) -> NDArray[np.uint8]:
+def crop_frame_edges(frame: NDArray[np.uint8], left_fraction: float = 0.0, bottom_fraction: float = 0.0) -> NDArray[np.uint8]:
     height, width = frame.shape[:2]
     left_px = int(round(width * max(0.0, min(left_fraction, 0.85))))
     bottom_px = int(round(height * max(0.0, min(bottom_fraction, 0.85))))
@@ -103,13 +92,9 @@ def crop_frame_edges(
     return frame[:bottom_px, left_px:]
 
 
-def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
-                                  final_t: Optional[int] = None, save: Union[bool, str] = False,
-                                  mod: Optional[str] = None, share_t: bool = True,
-                                  error_style: str = "shaded",
-                                  force_traj_files: Optional[List[Tuple[str, str]]] = None,
-                                  font_size: float = 14, marker_size: float = 10,
-                                  line_width: float = 1.5) -> None:
+def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str, final_t: Optional[int] = None, save: Union[bool, str] = False, 
+                                  mod: Optional[str] = None, share_t: bool = True, error_style: str = "shaded", force_traj_files: Optional[List[Tuple[str, str]]] = None,
+                                  font_size: float = 14, marker_size: float = 10, line_width: float = 1.5) -> None:
     """
     Compare experimental and simulated training in force mode or ``mod="pos"``.
 
@@ -162,14 +147,10 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     loss_MSE_sim = sim_df["loss_MSE"].to_numpy(dtype=float)
 
     if not position_mode:
-        F_exp_meas = np.vstack([exp_df["F_x_meas"].to_numpy(dtype=float),
-                                exp_df["F_y_meas"].to_numpy(dtype=float)])
-        F_exp_des = np.vstack([exp_df["F_x_des"].to_numpy(dtype=float),
-                               exp_df["F_y_des"].to_numpy(dtype=float)])
-        F_sim_meas = np.vstack([sim_df["Fx_meas"].to_numpy(dtype=float),
-                                sim_df["Fy_meas"].to_numpy(dtype=float)])
-        F_sim_des = np.vstack([sim_df["Fx_des"].to_numpy(dtype=float),
-                               sim_df["Fy_des"].to_numpy(dtype=float)])
+        F_exp_meas = np.vstack([exp_df["F_x_meas"].to_numpy(dtype=float), exp_df["F_y_meas"].to_numpy(dtype=float)])
+        F_exp_des = np.vstack([exp_df["F_x_des"].to_numpy(dtype=float), exp_df["F_y_des"].to_numpy(dtype=float)])
+        F_sim_meas = np.vstack([sim_df["Fx_meas"].to_numpy(dtype=float), sim_df["Fy_meas"].to_numpy(dtype=float)])
+        F_sim_des = np.vstack([sim_df["Fx_des"].to_numpy(dtype=float), sim_df["Fy_des"].to_numpy(dtype=float)])
         F_err = np.vstack([exp_df["F_err"].to_numpy(dtype=float)] * 2) if "F_err" in exp_df.columns else 10.0
 
     update_cols = ["upd_x_tip", "upd_y_tip", "upd_tip_angle"]
@@ -178,12 +159,8 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         raise KeyError(f"Missing update columns in experiment or simulation data: {missing_update_cols}")
 
     if position_mode:
-        pose_cols = [
-            ["x_rest_meas", "y_rest_meas", "theta_rest_meas",
-             "x_rest_des", "y_rest_des", "theta_rest_des"],
-            ["x_meas_tip", "y_meas_tip", "meas_tip_angle",
-             "x_des_tip", "y_des_tip", "des_tip_angle"],
-        ]
+        pose_cols = [["x_rest_meas", "y_rest_meas", "theta_rest_meas", "x_rest_des", "y_rest_des", "theta_rest_des"],
+                     ["x_meas_tip", "y_meas_tip", "meas_tip_angle", "x_des_tip", "y_des_tip", "des_tip_angle"]]
         missing_pose_cols = [col for df, cols in zip((exp_df, sim_df), pose_cols)
                              for col in cols if col not in df.columns]
         if missing_pose_cols:
@@ -239,16 +216,14 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
             ax_angle = axs[0, col].twinx()
             theta_meas = df[cols[2]].to_numpy(dtype=float)[1:T]
             theta_des = df[cols[5]].to_numpy(dtype=float)[1:T]
-            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
-                          if col == 0 else {})
+            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize} if col == 0 else {})
             for meas, des, color, label in ((cols[0], cols[3], colors_lst[1], "x"),
                                             (cols[1], cols[4], colors_lst[2], "y")):
                 axs[0, col].plot(t, df[meas].to_numpy(dtype=float)[1:T],
                                  color=color, label=rf"${label}$", **meas_style)
                 axs[0, col].plot(t, df[des].to_numpy(dtype=float)[1:T],
                                  color=color, linestyle=":")
-            ax_angle.plot(t, theta_meas, color=colors_lst[3],
-                          label=r"$\theta$", **meas_style)
+            ax_angle.plot(t, theta_meas, color=colors_lst[3], label=r"$\theta$", **meas_style)
             ax_angle.plot(t, theta_des, color=colors_lst[3], linestyle=":")
             ax_angle.set_ylim(centered_lims(theta_des, [theta_meas, theta_des]))
             if col == 0:
@@ -260,18 +235,12 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
                 axs[0, col].legend(lines, [line.get_label() for line in lines],
                                    ncol=3, **{**legend_kw, "loc": "lower right"})
     else:
-        for col, (meas, des, t, T) in enumerate(zip(
-                (F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
-            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
-                          if col == 0 else {})
-            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[2],
-                             label=r"$F_x$ measured", **meas_style)
-            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[2],
-                             linestyle=":", label=r"$F_x$ desired")
-            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[1],
-                             label=r"$F_y$ measured", **meas_style)
-            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[1],
-                             linestyle=":", label=r"$F_y$ desired")
+        for col, (meas, des, t, T) in enumerate(zip((F_exp_meas, F_sim_meas), (F_exp_des, F_sim_des), times, Ts)):
+            meas_style = ({"marker": ".", "linestyle": "None", "markersize": markersize} if col == 0 else {})
+            axs[0, col].plot(t, meas[0, 1:T], color=colors_lst[2], label=r"$F_x$ measured", **meas_style)
+            axs[0, col].plot(t, des[0, 1:T], color=colors_lst[2], linestyle=":", label=r"$F_x$ desired")
+            axs[0, col].plot(t, meas[1, 1:T], color=colors_lst[1], label=r"$F_y$ measured", **meas_style)
+            axs[0, col].plot(t, des[1, 1:T], color=colors_lst[1], linestyle=":", label=r"$F_y$ desired")
             axs[0, col].set_ylim(force_lims)
             if col == 1:
                 axs[0, col].legend(ncol=2, **legend_kw)
@@ -279,18 +248,9 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         if F_err is not None:
             for i, color in enumerate([colors_lst[2], colors_lst[1]]):
                 if error_style == "shaded":
-                    axs[0, 0].fill_between(
-                        times[0],
-                        F_exp_meas[i, 1:Ts[0]] - F_err,
-                        F_exp_meas[i, 1:Ts[0]] + F_err,
-                        color=color, alpha=0.5, linewidth=0,
-                    )
+                    axs[0, 0].fill_between(times[0], F_exp_meas[i, 1:Ts[0]] - F_err, F_exp_meas[i, 1:Ts[0]] + F_err, color=color, alpha=0.5, linewidth=0)
                 else:
-                    axs[0, 0].errorbar(
-                        times[0], F_exp_meas[i, 1:Ts[0]],
-                        yerr=F_err, fmt="none", color=color,
-                        elinewidth=2.0, capsize=4.0, capthick=2.0,
-                    )
+                    axs[0, 0].errorbar(times[0], F_exp_meas[i, 1:Ts[0]], yerr=F_err, fmt="none", color=color, elinewidth=2.0, capsize=4.0, capthick=2.0)
 
     # ====== middle: update tip pose ======
     update_axes = [axs[2, 0]] * 2
@@ -298,14 +258,10 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
     for col, (ax, df, t, T) in enumerate(zip(update_axes, (exp_df, sim_df), times, Ts)):
         ax_angle = angle_axes[0] if angle_axes else ax.twinx()
         angle_axes.append(ax_angle)
-        update_style = ({"marker": ".", "linestyle": "None", "markersize": markersize}
-                        if col == 0 else {})
-        ax.plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T],
-                color=colors_lst[1], label=r"$x^{\,!}$", **update_style)
-        ax.plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T],
-                color=colors_lst[2], label=r"$y^{\,!}$", **update_style)
-        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T],
-                       color=colors_lst[3], label=r"$\theta^{\,!}$", **update_style)
+        update_style = ({"marker": ".", "linestyle": "None", "markersize": markersize} if col == 0 else {})
+        ax.plot(t, df["upd_x_tip"].to_numpy(dtype=float)[1:T], color=colors_lst[1], label=r"$x^{\,!}$", **update_style)
+        ax.plot(t, df["upd_y_tip"].to_numpy(dtype=float)[1:T], color=colors_lst[2], label=r"$y^{\,!}$", **update_style)
+        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float)[1:T], color=colors_lst[3], label=r"$\theta^{\,!}$", **update_style)
         if col == 0:
             ax.set_ylabel(r"$x^{\,!},\,y^{\,!}\left[mm\right]$", fontsize=font_size)
         if col == 1:
@@ -322,11 +278,8 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         traj_axes = [fig.add_subplot(traj_grid[0, col]) for col in range(2)]
         traj_axes[1].sharey(traj_axes[0])
         for ax, (exp_path, sim_path) in zip(traj_axes, force_traj_files):
-            plot_force_along_traj(exp_path, csv_file_path_sim=sim_path,
-                                  graph_only=True, save=False, ax_force=ax,
-                                  font_size=font_size, marker_size=marker_size,
-                                  line_width=line_width,
-                                  plot_average_force_lines=True)
+            plot_force_along_traj(exp_path, csv_file_path_sim=sim_path, graph_only=True, save=False, ax_force=ax, font_size=font_size, marker_size=marker_size,
+                                  line_width=line_width, plot_average_force_lines=True)
         traj_axes[1].get_legend().remove()
         traj_axes[1].set_ylabel("")
     axs[2, 0].set_xlabel("t", fontsize=font_size)
@@ -359,8 +312,7 @@ def plot_compare_sim_exp_training(exp_file_path: str, sim_file_path: str,
         for ax, line in zip(loss_axes, loss_lines):
             ax.legend([line], [line.get_label()], ncol=1, **legend_kw)
     else:
-        loss_axes[0].legend(loss_lines, [line.get_label() for line in loss_lines],
-                            ncol=1, **legend_kw)
+        loss_axes[0].legend(loss_lines, [line.get_label() for line in loss_lines], ncol=1, **legend_kw)
 
     # ====== titles ======
     axs[0, 0].set_title("Experiment", fontsize=font_size)
@@ -397,11 +349,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     font_size = 13
 
     df = pd.read_csv(file_path)
-    required_cols = [
-        "upd_x_tip", "upd_y_tip", "upd_tip_angle",
-        "buckle_arr_meas", "buckle_arr_update",
-        "Fx_update", "Fy_update", "loss_MSE",
-    ]
+    required_cols = ["upd_x_tip", "upd_y_tip", "upd_tip_angle", "buckle_arr_meas", "buckle_arr_update", "Fx_update", "Fy_update", "loss_MSE"]
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         raise KeyError(f"Missing required columns in {file_path}: {missing_cols}")
@@ -438,10 +386,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
 
     buckle_update = stack_buckle_arrays(df["buckle_arr_update"])
 
-    fig, axs = plt.subplots(
-        nrows=4, ncols=1, sharex=True, figsize=(9, 7.0),
-        gridspec_kw={"height_ratios": [1.35, 0.9, 1.15, 0.9]},
-    )
+    fig, axs = plt.subplots(nrows=4, ncols=1, sharex=True, figsize=(9, 7.0), gridspec_kw={"height_ratios": [1.35, 0.9, 1.15, 0.9]})
     fig.suptitle(Path(file_path).name, fontsize=font_size + 1)
 
     # ====== update position and angle ======
@@ -463,23 +408,13 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     buckle_norm = BoundaryNorm([-1.5, 0, 1.5], buckle_cmap.N)
 
     def plot_buckle_heatmap(ax: plt.Axes, buckle_values: NDArray[np.float64], title: str) -> None:
-        ax.imshow(
-            buckle_values.T,
-            aspect="auto",
-            interpolation="nearest",
-            cmap=buckle_cmap,
-            norm=buckle_norm,
-            extent=[t[0] - 0.5, t[-1] + 0.5, buckle_values.shape[1] - 0.5, -0.5],
-        )
+        ax.imshow(buckle_values.T, aspect="auto", interpolation="nearest", cmap=buckle_cmap, norm=buckle_norm, extent=[t[0] - 0.5, t[-1] + 0.5, buckle_values.shape[1] - 0.5, -0.5])
         ax.set_ylabel(title, fontsize=font_size)
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     plot_buckle_heatmap(axs[1], buckle_update, "Buckle update")
 
-    buckle_handles = [
-        patches.Patch(color=colors_lst[1], label="-1"),
-        patches.Patch(color=colors_lst[4], label="1"),
-    ]
+    buckle_handles = [patches.Patch(color=colors_lst[1], label="-1"), patches.Patch(color=colors_lst[4], label="1")]
     axs[1].legend(handles=buckle_handles, loc="upper right", ncol=2, fontsize=10,
                   handlelength=1.0, columnspacing=0.8, frameon=True)
 
@@ -489,16 +424,11 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     ax_force.plot(t, df["Fy_update"].to_numpy(dtype=float), color=colors_lst[1], label=r"$F_y$ update")
 
     if mod != "pos":
-        optional_force_cols = [
-            ("Fx_meas", colors_lst[2], ":", r"$F_x$ meas."),
-            ("Fy_meas", colors_lst[1], ":", r"$F_y$ meas."),
-            ("Fx_des", colors_lst[2], "--", r"$F_x$ des."),
-            ("Fy_des", colors_lst[1], "--", r"$F_y$ des."),
-        ]
+        optional_force_cols = [("Fx_meas", colors_lst[2], ":", r"$F_x$ meas."), ("Fy_meas", colors_lst[1], ":", r"$F_y$ meas."), ("Fx_des", colors_lst[2], "--", r"$F_x$ des."),
+                               ("Fy_des", colors_lst[1], "--", r"$F_y$ des.")]
         for col, color, linestyle, label in optional_force_cols:
             if col in df.columns:
-                ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle,
-                              alpha=0.75, label=label)
+                ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle,alpha=0.75, label=label)
 
     ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
     ax_force.legend(loc="best", ncol=2 if mod == "pos" else 3, fontsize=10)
@@ -525,13 +455,7 @@ def plot_sim_or_exp(file_path: str, mod: str = "summary", final_t: Optional[int]
     plt.show()
 
 
-def plot_trajectory_positions(
-    csv_file_path: Union[str, Path],
-    output_path: Optional[Union[str, Path]] = None,
-    save: Union[bool, str] = True,
-    dpi: int = 180,
-    font_size: float = 18,
-) -> Path:
+def plot_trajectory_positions(csv_file_path: Union[str, Path], output_path: Optional[Union[str, Path]] = None, save: Union[bool, str] = True, dpi: int = 180, font_size: float = 18) -> Path:
     """
     Plot the tip trajectory, with marker color indicating tip angle.
 
@@ -564,44 +488,17 @@ def plot_trajectory_positions(
     interpolation_steps = 100
     segment_points = []
     segment_angles = []
-    for start_point, end_point, start_angle, end_angle in zip(
-        points[:-1], points[1:], tip_angle_deg[:-1], tip_angle_deg[1:]
-    ):
+    for start_point, end_point, start_angle, end_angle in zip(points[:-1], points[1:], tip_angle_deg[:-1], tip_angle_deg[1:]):
         fractions = np.linspace(0.0, 1.0, interpolation_steps + 1)
-        interpolated_points = (
-            start_point[None, :] * (1.0 - fractions[:, None])
-            + end_point[None, :] * fractions[:, None]
-        )
-        segment_points.append(
-            np.stack((interpolated_points[:-1], interpolated_points[1:]), axis=1)
-        )
+        interpolated_points = (start_point[None, :] * (1.0 - fractions[:, None]) + end_point[None, :] * fractions[:, None])
+        segment_points.append(np.stack((interpolated_points[:-1], interpolated_points[1:]), axis=1))
         angle_fractions = (fractions[:-1] + fractions[1:]) / 2
-        segment_angles.append(
-            start_angle * (1.0 - angle_fractions) + end_angle * angle_fractions
-        )
+        segment_angles.append(start_angle * (1.0 - angle_fractions) + end_angle * angle_fractions)
     segments = np.concatenate(segment_points)
-    line = LineCollection(
-        segments,
-        cmap=custom_cmap,
-        norm=norm,
-        linewidth=2,
-        linestyle="-",
-        zorder=1,
-    )
+    line = LineCollection(segments, cmap=custom_cmap, norm=norm, linewidth=2, linestyle="-", zorder=1)
     line.set_array(np.concatenate(segment_angles))
     ax.add_collection(line)
-    markers = ax.scatter(
-        x_tip,
-        y_tip,
-        c=tip_angle_deg,
-        cmap=custom_cmap,
-        norm=norm,
-        marker="o",
-        s=70,
-        edgecolors="black",
-        linewidths=0.7,
-        zorder=2,
-    )
+    markers = ax.scatter(x_tip, y_tip, c=tip_angle_deg, cmap=custom_cmap, norm=norm, marker="o", s=70, edgecolors="black", linewidths=0.7, zorder=2)
 
     ax.set_xlabel(r"$x_{tip}\,\left[mm\right]$", fontsize=font_size)
     ax.set_ylabel(r"$y_{tip}\,\left[mm\right]$", fontsize=font_size)
@@ -617,12 +514,7 @@ def plot_trajectory_positions(
     return output_path
 
 
-def plot_average_force_along_traj(
-    fx_average: float,
-    fy_average: float,
-    buckle: str,
-    save: bool = False,
-) -> Optional[Path]:
+def plot_average_force_along_traj(fx_average: float, fy_average: float, buckle: str, save: bool = False) -> Optional[Path]:
     """Plot average experimental forces and optionally save them as a PDF."""
     fx_average = float(fx_average)
     fy_average = float(fy_average)
@@ -648,37 +540,13 @@ def plot_average_force_along_traj(
     return output_path if save else None
 
 
-def plot_force_along_traj(
-    csv_file_path: Union[str, Path],
-    vid_path: Optional[Union[str, Path]] = None,
-    output_path: Optional[Union[str, Path]] = None,
-    initial_time_s: float = 0.0,
-    final_time_s: Optional[float] = None,
-    mean_line_mode: str = "des",
-    csv_file_path_des: Optional[Union[str, Path]] = None,
-    fps: int = 2,
-    save: Union[bool, str] = True,
-    dpi: int = 180,
-    video_crop_left_fraction: float = 0.12,
-    video_crop_bottom_fraction: float = 0.12,
-    graph_only: bool = False,
-    csv_file_path_sim: Optional[Union[str, Path]] = None,
-    experiment_error: float = 10.0,
-    scale_y: Optional[bool] = False,
-    range_y: Optional[bool] = False,
-    y_lims: Tuple[float, float] = (-130.0, 250.0),
-    font_size: float = 18,
-    line_width: float = 3.0,
-    marker_size: float = 14.0,
-    errorbar_line_width: float = 2.0,
-    errorbar_capsize: float = 4.0,
-    error_style: str = "shaded",
-    plot_final_force_lines: bool = False,
-    plot_average_force_lines: bool = False,
-    ax_force: Optional[Axes] = None,
-    sims_as_markers: Optional[bool] = False,
-    size_scale: float = 0.5,
-) -> Path:
+def plot_force_along_traj(csv_file_path: Union[str, Path], vid_path: Optional[Union[str, Path]] = None, output_path: Optional[Union[str, Path]] = None, initial_time_s: float = 0.0,
+                          final_time_s: Optional[float] = None, mean_line_mode: str = "des", csv_file_path_des: Optional[Union[str, Path]] = None, fps: int = 2, 
+                          save: Union[bool, str] = True, dpi: int = 180, video_crop_left_fraction: float = 0.12, video_crop_bottom_fraction: float = 0.12, graph_only: bool = False,
+                          csv_file_path_sim: Optional[Union[str, Path]] = None, experiment_error: float = 10.0, scale_y: Optional[bool] = False, range_y: Optional[bool] = False,
+                          y_lims: Tuple[float, float] = (-130.0, 250.0), font_size: float = 18, line_width: float = 3.0, marker_size: float = 14.0, errorbar_line_width: float = 2.0,
+                          errorbar_capsize: float = 4.0, error_style: str = "shaded", plot_final_force_lines: bool = False, plot_average_force_lines: bool = False,
+                          ax_force: Optional[Axes] = None, sims_as_markers: Optional[bool] = False, size_scale: float = 0.5) -> Path:
     """
     Plot ``F_x``/``F_y`` as a function of ``y_tip``.
 
@@ -736,11 +604,7 @@ def plot_force_along_traj(
     if error_style not in {"shaded", "bars", "None"}:
         raise ValueError('error_style must be either "shaded", "bars", or "None".')
 
-    col_candidates = {
-        "y": ("y_tip", "y", "Position_y"),
-        "fx": ("F_x", "Fx", "F_x_meas", "Fx_meas"),
-        "fy": ("F_y", "Fy", "F_y_meas", "Fy_meas"),
-    }
+    col_candidates = {"y": ("y_tip", "y", "Position_y"), "fx": ("F_x", "Fx", "F_x_meas", "Fx_meas"), "fy": ("F_y", "Fy", "F_y_meas", "Fy_meas")}
 
     def find_col(df_in: pd.DataFrame, kind: str, path: Path) -> str:
         for col in col_candidates[kind]:
@@ -756,11 +620,7 @@ def plot_force_along_traj(
         df_in = df_in[[y_col, fx_col, fy_col]].dropna().reset_index(drop=True)
         if df_in.empty:
             raise ValueError(f"No valid force trajectory rows found in {path}.")
-        return (
-            df_in[y_col].to_numpy(dtype=float),
-            df_in[fx_col].to_numpy(dtype=float),
-            df_in[fy_col].to_numpy(dtype=float),
-        )
+        return (df_in[y_col].to_numpy(dtype=float), df_in[fx_col].to_numpy(dtype=float), df_in[fy_col].to_numpy(dtype=float))
 
     if range_y:
         _, fx, fy = read_force_traj(csv_path)
@@ -785,71 +645,36 @@ def plot_force_along_traj(
         # colors_lst, _, _ = colors.color_scheme()
         standalone = ax_force is None
         if standalone:
-            fig, ax_force = plt.subplots(
-                figsize=(7 * size_scale, 5 * size_scale),
-                dpi=dpi,
-                constrained_layout=True,
-            )
+            fig, ax_force = plt.subplots(figsize=(7 * size_scale, 5 * size_scale), dpi=dpi, constrained_layout=True)
         else:
             fig = ax_force.figure
 
         if error_style == "shaded":
-            ax_force.fill_between(
-                y, fx - experiment_error, fx + experiment_error,
-                color=colors_lst[2], alpha=0.5, linewidth=0,
-            )
-            ax_force.fill_between(
-                y, fy - experiment_error, fy + experiment_error,
-                color=colors_lst[1], alpha=0.5, linewidth=0,
-            )
-            ax_force.plot(
-                y, fx, ".", color=colors_lst[2], markersize=marker_size,
-                label="_nolegend_",
-            )
-            ax_force.plot(
-                y, fy, ".", color=colors_lst[1], markersize=marker_size,
-                label="_nolegend_",
-            )
+            ax_force.fill_between(y, fx - experiment_error, fx + experiment_error, color=colors_lst[2], alpha=0.5, linewidth=0)
+            ax_force.fill_between(y, fy - experiment_error, fy + experiment_error, color=colors_lst[1], alpha=0.5, linewidth=0)
+            ax_force.plot(y, fx, ".", color=colors_lst[2], markersize=marker_size, label="_nolegend_")
+            ax_force.plot(y, fy, ".", color=colors_lst[1], markersize=marker_size, label="_nolegend_")
         elif error_style == "bars":
-            errorbar_style = {
-                "fmt": ".",
-                "linestyle": "none",
-                "markersize": marker_size,
-                "elinewidth": errorbar_line_width,
-                "capsize": errorbar_capsize,
-                "capthick": errorbar_line_width,
-            }
-            ax_force.errorbar(
-                y, fx, yerr=experiment_error, color=colors_lst[2],
-                label="_nolegend_", **errorbar_style,
-            )
-            ax_force.errorbar(
-                y, fy, yerr=experiment_error, color=colors_lst[1],
-                label="_nolegend_", **errorbar_style,
-            )
+            errorbar_style = {"fmt": ".", "linestyle": "none", "markersize": marker_size, "elinewidth": errorbar_line_width, "capsize": errorbar_capsize, "capthick": errorbar_line_width}
+            ax_force.errorbar(y, fx, yerr=experiment_error, color=colors_lst[2], label="_nolegend_", **errorbar_style)
+            ax_force.errorbar(y, fy, yerr=experiment_error, color=colors_lst[1], label="_nolegend_", **errorbar_style)
         else:
             ax_force.plot(y, fx, color=colors_lst[2], marker="*", markersize=marker_size + 4 * size_scale, linestyle="None", label=r"$F_{x,\text{exp}}$")
             ax_force.plot(y, fy, color=colors_lst[1], marker="*", markersize=marker_size + 4 * size_scale, linestyle="None", label=r"$F_{y,\text{exp}}$")
         if not sims_as_markers:
-            ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width,
-                        label="_nolegend_")
-            ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width,
-                        label="_nolegend_")
+            ax_force.plot(y_sim, fx_sim, color=colors_lst[2], linewidth=line_width, label="_nolegend_")
+            ax_force.plot(y_sim, fy_sim, color=colors_lst[1], linewidth=line_width, label="_nolegend_")
         else:
             # ax_force.plot(y_sim, fx_sim, color=colors_lst[2], marker="o", markerfacecolor='none', linestyle="None", label="_nolegend_")
             # ax_force.plot(y_sim, fy_sim, color=colors_lst[1], marker="o", markerfacecolor='none', linestyle="None", label="_nolegend_")
             ax_force.plot(y_sim, fx_sim, color=colors_lst[2], marker="o", markersize=marker_size, linestyle="None", label=r"$F_{x,\text{sim}}$")
             ax_force.plot(y_sim, fy_sim, color=colors_lst[1], marker="o", markersize=marker_size, linestyle="None", label=r"$F_{y,\text{sim}}$")
         if plot_final_force_lines:
-            ax_force.axhline(fx[-1], color=colors_lst[2], linestyle="--",
-                             linewidth=line_width, label="_nolegend_")
-            ax_force.axhline(fy[-1], color=colors_lst[1], linestyle="--",
-                             linewidth=line_width, label="_nolegend_")
+            ax_force.axhline(fx[-1], color=colors_lst[2], linestyle="--", linewidth=line_width, label="_nolegend_")
+            ax_force.axhline(fy[-1], color=colors_lst[1], linestyle="--", linewidth=line_width, label="_nolegend_")
         if plot_average_force_lines:
-            ax_force.axhline(np.mean(fx), color=colors_lst[2], linestyle="-",
-                             linewidth=1.0 * size_scale, label="_nolegend_")
-            ax_force.axhline(np.mean(fy), color=colors_lst[1], linestyle="-",
-                             linewidth=1.0 * size_scale, label="_nolegend_")
+            ax_force.axhline(np.mean(fx), color=colors_lst[2], linestyle="-", linewidth=1.0 * size_scale, label="_nolegend_")
+            ax_force.axhline(np.mean(fy), color=colors_lst[1], linestyle="-", linewidth=1.0 * size_scale, label="_nolegend_")
         if range_y:
             ax_force.set_xlabel("step", fontsize=font_size)
         else:
@@ -863,21 +688,11 @@ def plot_force_along_traj(
         if not sims_as_markers:
             legend_linestyle = "-" if line_width > 0 and not sims_as_markers else "None"
             legend_marker = "." if line_width > 0 else "o"
-            legend_handles = [
-                Line2D([0], [0], color=colors_lst[2], linewidth=line_width,
-                    linestyle=legend_linestyle, marker=legend_marker,
-                    markersize=marker_size, label=r"$F_x$"),
-                Line2D([0], [0], color=colors_lst[1], linewidth=line_width,
-                    linestyle=legend_linestyle, marker=legend_marker,
-                    markersize=marker_size, label=r"$F_y$"),
-            ]
-            ax_force.legend(handles=legend_handles, loc="best", ncol=2,
-                            fontsize=font_size if standalone else embedded_legend_font_size)
+            legend_handles = [Line2D([0], [0], color=colors_lst[2], linewidth=line_width, linestyle=legend_linestyle, marker=legend_marker, markersize=marker_size, label=r"$F_x$"),
+                              Line2D([0], [0], color=colors_lst[1], linewidth=line_width, linestyle=legend_linestyle, marker=legend_marker, markersize=marker_size, label=r"$F_y$")]
+            ax_force.legend(handles=legend_handles, loc="best", ncol=2, fontsize=font_size if standalone else embedded_legend_font_size)
         else:
-            ax_force.legend(
-                loc="best", ncol=2,
-                fontsize=font_size if standalone else embedded_legend_font_size,
-            )
+            ax_force.legend(loc="best", ncol=2, fontsize=font_size if standalone else embedded_legend_font_size)
 
         if save:
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -921,11 +736,7 @@ def plot_force_along_traj(
     if final_time_s < initial_time_s:
         raise ValueError("final_time_s must be greater than or equal to initial_time_s.")
 
-    fig = plt.figure(
-        figsize=(11.5 * size_scale, 5.2 * size_scale),
-        dpi=dpi,
-        constrained_layout=True,
-    )
+    fig = plt.figure(figsize=(11.5 * size_scale, 5.2 * size_scale), dpi=dpi, constrained_layout=True)
 
     def draw_frame(video_frame_bgr: NDArray[np.uint8], plot_idx: int, show_means: bool) -> NDArray[np.uint8]:
         fig.clear()
@@ -933,11 +744,7 @@ def plot_force_along_traj(
         ax_video = fig.add_subplot(grid[0, 0])
         ax_force = fig.add_subplot(grid[0, 1])
 
-        video_frame_bgr = crop_frame_edges(
-            video_frame_bgr,
-            left_fraction=video_crop_left_fraction,
-            bottom_fraction=video_crop_bottom_fraction,
-        )
+        video_frame_bgr = crop_frame_edges(video_frame_bgr, left_fraction=video_crop_left_fraction, bottom_fraction=video_crop_bottom_fraction)
         video_frame_rgb = cv2.cvtColor(video_frame_bgr, cv2.COLOR_BGR2RGB)
         ax_video.imshow(video_frame_rgb)
         ax_video.set_xticks([])
@@ -959,22 +766,14 @@ def plot_force_along_traj(
 
         ax_force.set_xlim(x_lims)
         ax_force.set_ylim(force_lims)
-        ax_force.set_xlabel(r"$y_{tip}$", fontsize=font_size)
+        ax_force.set_xlabel(r"$y\,\left[mm\right]$", fontsize=font_size)
         ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
         ax_force.tick_params(axis="both", labelsize=font_size)
-        legend_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle=mean_linestyle, marker="o", markersize=video_marker_size,
-                   label=rf"$F_{{x}}\ \mathrm{{{'measured' if current_suffix == 'meas' else 'desired'}}}$"),
-            Line2D([0], [0], color=colors_lst[1], linestyle=mean_linestyle, marker="o", markersize=video_marker_size,
-                   label=rf"$F_{{y}}\ \mathrm{{{'measured' if current_suffix == 'meas' else 'desired'}}}$"),
-        ]
+        legend_handles = [Line2D([0], [0], color=colors_lst[2], linestyle=mean_linestyle, marker="o", markersize=video_marker_size, label=r"$F_x$" if current_suffix == "meas" else r"$\hat{F}_x$"),
+                          Line2D([0], [0], color=colors_lst[1], linestyle=mean_linestyle, marker="o", markersize=video_marker_size, label=r"$F_y$" if current_suffix == "meas" else r"$\hat{F}_y$")]
         if mean_line_mode == "meas" and des_means is not None:
-            legend_handles.extend([
-                Line2D([0], [0], color=colors_lst[2], linestyle=":",
-                       label=r"$F_{x}\ \mathrm{desired}$"),
-                Line2D([0], [0], color=colors_lst[1], linestyle=":",
-                       label=r"$F_{y}\ \mathrm{desired}$"),
-            ])
+            legend_handles.extend([Line2D([0], [0], color=colors_lst[2], linestyle=":", label=r"$\hat{F}_x$"),
+                                   Line2D([0], [0], color=colors_lst[1], linestyle=":", label=r"$\hat{F}_y$")])
         ax_force.legend(handles=legend_handles, loc="best", fontsize=font_size)
 
         fig.canvas.draw()
@@ -1039,21 +838,9 @@ def plot_force_along_traj(
     return output_path
 
 
-def plot_force_during_zero_force(
-    csv_file_path: Union[str, Path],
-    vid_path: Union[str, Path],
-    initial_time_vid: float,
-    final_time_vid: float,
-    final_time_csv: Optional[Union[int, float]] = None,
-    fps: int = 2,
-    mean_line_mode: str = "meas",
-    csv_file_path_des: Optional[Union[str, Path]] = None,
-    output_path: Optional[Union[str, Path]] = None,
-    save: bool = True,
-    dpi: int = 180,
-    video_crop_left_fraction: float = 0.12,
-    video_crop_bottom_fraction: float = 0.12,
-) -> Path:
+def plot_force_during_zero_force(csv_file_path: Union[str, Path], vid_path: Union[str, Path], initial_time_vid: float, final_time_vid: float, final_time_csv: Optional[Union[int, float]] = None,
+                                 fps: int = 2, mean_line_mode: str = "meas", csv_file_path_des: Optional[Union[str, Path]] = None, output_path: Optional[Union[str, Path]] = None,
+                                 save: bool = True, dpi: int = 180, video_crop_left_fraction: float = 0.12, video_crop_bottom_fraction: float = 0.12) -> Path:
     """
     Create a video with the source video on the left and force/update values on the right.
 
@@ -1073,17 +860,11 @@ def plot_force_during_zero_force(
     if mean_line_mode not in {"des", "meas"}:
         raise ValueError('mean_line_mode must be either "des" or "meas".')
 
-    col_candidates = {
-        "t": ("t", "time", "time_s"),
-        "fx": ("F_x", "Fx", "F_x_meas", "Fx_meas"),
-        "fy": ("F_y", "Fy", "F_y_meas", "Fy_meas"),
-        "x": ("upd_x_tip", "x_tip", "x", "update_x"),
-        "y": ("upd_y_tip", "y_tip", "y", "update_y"),
-        "angle": ("upd_tip_angle", "angle_tip", "theta", "angle", "update_angle"),
-        "x_des": ("x_desired", "x_rest_des", "x_des", "x_tip_des", "x"),
-        "y_des": ("y_desired", "y_rest_des", "y_des", "y_tip_des", "y"),
-        "angle_des": ("theta_desired", "angle_desired", "theta_rest_des", "theta_des", "angle_des", "tip_angle_des", "theta"),
-    }
+    col_candidates = {"t": ("t", "time", "time_s"), "fx": ("F_x", "Fx", "F_x_meas", "Fx_meas"), "fy": ("F_y", "Fy", "F_y_meas", "Fy_meas"),
+                      "x": ("upd_x_tip", "x_tip", "x", "update_x"), "y": ("upd_y_tip", "y_tip", "y", "update_y"), 
+                      "angle": ("upd_tip_angle", "angle_tip", "theta", "angle", "update_angle"),
+                      "x_des": ("x_desired", "x_rest_des", "x_des", "x_tip_des", "x"), "y_des": ("y_desired", "y_rest_des", "y_des", "y_tip_des", "y"),
+                      "angle_des": ("theta_desired", "angle_desired", "theta_rest_des", "theta_des", "angle_des", "tip_angle_des", "theta")}
 
     def find_col(df_in: pd.DataFrame, kind: str, path: Path, required: bool = True) -> Optional[str]:
         for col in col_candidates[kind]:
@@ -1093,10 +874,8 @@ def plot_force_during_zero_force(
             raise KeyError(f"Missing {kind} column in {path}. Tried {col_candidates[kind]}.")
         return None
 
-    def read_zero_force_data(path: Path) -> Tuple[
-        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
-        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
-    ]:
+    def read_zero_force_data(path: Path) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
+                                                  NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
         df_in = pd.read_csv(path)
         fx_col = find_col(df_in, "fx", path)
         fy_col = find_col(df_in, "fy", path)
@@ -1110,22 +889,11 @@ def plot_force_during_zero_force(
         df_in = df_in[use_cols].dropna().reset_index(drop=True)
         if df_in.empty:
             raise ValueError(f"No valid zero-force rows found in {path}.")
-        t_values = (
-            df_in[t_col].to_numpy(dtype=float)
-            if t_col is not None else np.arange(len(df_in), dtype=float)
-        )
-        return (
-            t_values,
-            df_in[fx_col].to_numpy(dtype=float),
-            df_in[fy_col].to_numpy(dtype=float),
-            df_in[x_col].to_numpy(dtype=float),
-            df_in[y_col].to_numpy(dtype=float),
-            df_in[angle_col].to_numpy(dtype=float),
-        )
+        t_values = (df_in[t_col].to_numpy(dtype=float) if t_col is not None else np.arange(len(df_in), dtype=float))
+        return (t_values, df_in[fx_col].to_numpy(dtype=float), df_in[fy_col].to_numpy(dtype=float), df_in[x_col].to_numpy(dtype=float),
+                df_in[y_col].to_numpy(dtype=float), df_in[angle_col].to_numpy(dtype=float))
 
-    def read_desired_position_data(path: Path) -> Optional[Tuple[
-        NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64],
-    ]]:
+    def read_desired_position_data(path: Path) -> Optional[Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]]:
         df_in = pd.read_csv(path)
         x_des_col = find_col(df_in, "x_des", path, required=False)
         y_des_col = find_col(df_in, "y_des", path, required=False)
@@ -1139,16 +907,8 @@ def plot_force_during_zero_force(
         df_in = df_in[use_cols].dropna().reset_index(drop=True)
         if df_in.empty:
             return None
-        t_values = (
-            df_in[t_col].to_numpy(dtype=float)
-            if t_col is not None else np.arange(len(df_in), dtype=float)
-        )
-        return (
-            t_values,
-            df_in[x_des_col].to_numpy(dtype=float),
-            df_in[y_des_col].to_numpy(dtype=float),
-            df_in[angle_des_col].to_numpy(dtype=float),
-        )
+        t_values = (df_in[t_col].to_numpy(dtype=float) if t_col is not None else np.arange(len(df_in), dtype=float))
+        return (t_values, df_in[x_des_col].to_numpy(dtype=float), df_in[y_des_col].to_numpy(dtype=float), df_in[angle_des_col].to_numpy(dtype=float))
 
     t_csv, fx, fy, upd_x, upd_y, upd_angle = read_zero_force_data(csv_path)
     if final_time_csv is not None:
@@ -1164,10 +924,7 @@ def plot_force_during_zero_force(
             t_csv, fx, fy = t_csv[:final_count], fx[:final_count], fy[:final_count]
             upd_x, upd_y, upd_angle = upd_x[:final_count], upd_y[:final_count], upd_angle[:final_count]
 
-    desired_position = (
-        read_desired_position_data(Path(csv_file_path_des))
-        if csv_file_path_des is not None else None
-    )
+    desired_position = (read_desired_position_data(Path(csv_file_path_des)) if csv_file_path_des is not None else None)
 
     line_style = ":" if mean_line_mode == "des" else "-"
     # colors_lst, red, custom_cmap = colors.color_scheme()
@@ -1180,10 +937,7 @@ def plot_force_during_zero_force(
         _, x_des, y_des, angle_des = desired_position
         update_pos_values.extend([x_des, y_des])
         update_angle_values.append(angle_des)
-    update_lims = {
-        "position": padded_lims(update_pos_values),
-        "angle": centered_lims(update_angle_values[-1][-1:], update_angle_values),
-    }
+    update_lims = {"position": padded_lims(update_pos_values), "angle": centered_lims(update_angle_values[-1][-1:], update_angle_values)}
 
     try:
         import cv2
@@ -1221,11 +975,7 @@ def plot_force_during_zero_force(
         ax_update = fig.add_subplot(grid[1, 1])
         ax_update_angle = ax_update.twinx()
 
-        video_frame_bgr = crop_frame_edges(
-            video_frame_bgr,
-            left_fraction=video_crop_left_fraction,
-            bottom_fraction=video_crop_bottom_fraction,
-        )
+        video_frame_bgr = crop_frame_edges(video_frame_bgr, left_fraction=video_crop_left_fraction, bottom_fraction=video_crop_bottom_fraction)
         ax_video.imshow(cv2.cvtColor(video_frame_bgr, cv2.COLOR_BGR2RGB))
         ax_video.set_xticks([])
         ax_video.set_yticks([])
@@ -1238,38 +988,23 @@ def plot_force_during_zero_force(
                           linestyle=line_style, marker="o", markersize=4)
             ax_force.plot(t_csv[:upto], fy[:upto], color=colors_lst[1],
                           linestyle=line_style, marker="o", markersize=4)
-            # if plot_idx >= len(t_csv) - 1:
-            #     ax_force.plot(t_csv[-1], fx[-1], color=colors_lst[2], marker="o",
-            #                   markersize=10, linestyle="None")
-            #     ax_force.plot(t_csv[-1], fy[-1], color=colors_lst[1], marker="o",
-            #                   markersize=10, linestyle="None")
 
         ax_force.set_xlim(x_lims)
         ax_force.set_ylim(force_lims)
         ax_force.set_xlabel("step" if final_time_csv is not None else "CSV sample")
         ax_force.set_ylabel(r"$F\,\left[mN\right]$")
-        legend_handles = [
-            Line2D([0], [0], color=colors_lst[2], linestyle=line_style, marker="o",
-                   label=r"$F_{x}$"),
-            Line2D([0], [0], color=colors_lst[1], linestyle=line_style, marker="o",
-                   label=r"$F_{y}$"),
-        ]
+        legend_handles = [Line2D([0], [0], color=colors_lst[2], linestyle=line_style, marker="o", label=r"$F_{x}$"),
+                          Line2D([0], [0], color=colors_lst[1], linestyle=line_style, marker="o", label=r"$F_{y}$")]
         ax_force.legend(handles=legend_handles, loc="best", fontsize=9)
 
         if upto > 0:
-            ax_update.plot(t_csv[:upto], upd_x[:upto], color=colors_lst[2], marker="o",
-                           label=r"$x$ update")
-            ax_update.plot(t_csv[:upto], upd_y[:upto], color=colors_lst[1], marker="o",
-                           label=r"$y$ update")
-            ax_update_angle.plot(t_csv[:upto], upd_angle[:upto], color=red, marker="o",
-                                 label=r"$\theta$ update")
+            ax_update.plot(t_csv[:upto], upd_x[:upto], color=colors_lst[2], marker="o", label=r"$x$ update")
+            ax_update.plot(t_csv[:upto], upd_y[:upto], color=colors_lst[1], marker="o", label=r"$y$ update")
+            ax_update_angle.plot(t_csv[:upto], upd_angle[:upto], color=red, marker="o", label=r"$\theta$ update")
             if plot_idx >= len(t_csv) - 1:
-                ax_update.plot(t_csv[-1], upd_x[-1], color=colors_lst[2], marker="o",
-                              markersize=10, linestyle="None")
-                ax_update.plot(t_csv[-1], upd_y[-1], color=colors_lst[1], marker="o",
-                              markersize=10, linestyle="None")
-                ax_update_angle.plot(t_csv[-1], upd_angle[-1], color=red, marker="o",
-                                     markersize=10, linestyle="None")
+                ax_update.plot(t_csv[-1], upd_x[-1], color=colors_lst[2], marker="o", markersize=10, linestyle="None")
+                ax_update.plot(t_csv[-1], upd_y[-1], color=colors_lst[1], marker="o", markersize=10, linestyle="None")
+                ax_update_angle.plot(t_csv[-1], upd_angle[-1], color=red, marker="o", markersize=10, linestyle="None")
         if desired_position is not None:
             t_des, x_des, y_des, angle_des = desired_position
             ax_update.axhline(x_des[-1], color=colors_lst[2], linestyle="--", linewidth=2.0)
@@ -1285,9 +1020,9 @@ def plot_force_during_zero_force(
             update_handles = [Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$"),
                             Line2D([0], [0], color=colors_lst[2], linestyle="--", label=r"$x$ des."),
                             Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$"),
-                            Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$y$ des."),
+                            Line2D([0], [0], color=colors_lst[1], linestyle="--", label=r"$\hat{y}$"),
                             Line2D([0], [0], color=red, linestyle="-", marker="o", label=r"$\theta$"),
-                            Line2D([0], [0], color=red, linestyle="--", label=r"$\theta$ des.")]
+                            Line2D([0], [0], color=red, linestyle="--", label=r"$\hat{\theta}$")]
         else:
             update_handles = [Line2D([0], [0], color=colors_lst[2], linestyle="-", marker="o", label=r"$x$"),
                             Line2D([0], [0], color=colors_lst[1], linestyle="-", marker="o", label=r"$y$"),
@@ -1346,16 +1081,10 @@ def plot_force_during_zero_force(
     return output_path
 
 
-def training_force_data_and_vid(
-    training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining",
-    csv_file_path: Optional[Union[str, Path]] = None,
-    image_dir: Optional[Union[str, Path]] = None,
-    output_path: Optional[Union[str, Path]] = None,
-    mod: str = "summary",
-    final_t: Optional[int] = None,
-    fps: int = 2,
-    dpi: int = 180,
-) -> List[Path]:
+def training_force_data_and_vid(training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June19_fullTraining",
+                                csv_file_path: Optional[Union[str, Path]] = None, image_dir: Optional[Union[str, Path]] = None,
+                                output_path: Optional[Union[str, Path]] = None, mod: str = "summary", final_t: Optional[int] = None,
+                                fps: int = 2, dpi: int = 180) -> List[Path]:
     """
     Create video(s) with the training image on the left and CSV plots up to the
     corresponding training time on the right.
@@ -1405,10 +1134,7 @@ def training_force_data_and_vid(
 
         csv_paths = [path for path in training_dir.rglob("*.csv") if "dataset" not in path.stem.lower() and re.search(r"[01]+to[01]+", path.stem)]
         csv_paths = sorted(csv_paths, key=natural_key)
-        image_dirs = [
-            path for path in training_dir.rglob("*")
-            if path.is_dir() and "training" in path.name.lower() and image_files_in_dir(path)
-        ]
+        image_dirs = [path for path in training_dir.rglob("*") if path.is_dir() and "training" in path.name.lower() and image_files_in_dir(path)]
         pairs = []
         for csv_path in csv_paths:
             img_dir = find_image_dir_for_csv(csv_path, image_dirs)
@@ -1451,23 +1177,13 @@ def training_force_data_and_vid(
         t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
         measured_desired_cols = [col for col in ["F_x_meas", "F_y_meas", "F_x_des", "F_y_des"] if col in df_full.columns]
         update_cols = ["F_x_update", "F_y_update"]
-        update_lims = update_position_angle_lims(
-            df_full["upd_x_tip"].to_numpy(dtype=float),
-            df_full["upd_y_tip"].to_numpy(dtype=float),
-            df_full["upd_tip_angle"].to_numpy(dtype=float),
-        )
+        update_lims = update_position_angle_lims(df_full["upd_x_tip"].to_numpy(dtype=float), df_full["upd_y_tip"].to_numpy(dtype=float),
+                                                 df_full["upd_tip_angle"].to_numpy(dtype=float))
 
-        lims = {
-            "x": time_step_lims(t_full),
-            "position": update_lims["position"],
-            "angle": update_lims["angle"],
-            "measured_desired_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in measured_desired_cols]),
-            "update_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in update_cols]),
-            "loss": padded_lims([
-                df_full["loss_MSE"].to_numpy(dtype=float),
-                np.zeros(len(df_full), dtype=float),
-            ]),
-        }
+        lims = {"x": time_step_lims(t_full), "position": update_lims["position"], "angle": update_lims["angle"],
+                "measured_desired_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in measured_desired_cols]),
+                "update_force": padded_lims([df_full[col].to_numpy(dtype=float) for col in update_cols]), 
+                "loss": padded_lims([df_full["loss_MSE"].to_numpy(dtype=float), np.zeros(len(df_full), dtype=float)])}
         if "buckle_arr_update" in df_full.columns:
             buckle_update = stack_buckle_arrays(df_full["buckle_arr_update"])
             lims["buckle_y"] = (buckle_update.shape[1] - 0.5, -0.5)
@@ -1487,17 +1203,12 @@ def training_force_data_and_vid(
         fig.suptitle(r"$t={}$".format(f"{t[-1]:g}"), fontsize=title_size)
 
         ax_force = axes[0]
-        measured_desired_cols = [
-            ("F_x_meas", colors_lst[2], "-", r"$F_x$"),
-            ("F_y_meas", colors_lst[1], "-", r"$F_y$"),
-            ("F_x_des", colors_lst[2], "--", r"$\hat{F}_x$"),
-            ("F_y_des", colors_lst[1], "--", r"$\hat{F}_y$"),
-        ]
+        measured_desired_cols = [("F_x_meas", colors_lst[2], "-", r"$F_x$"), ("F_y_meas", colors_lst[1], "-", r"$F_y$"), ("F_x_des", colors_lst[2], "--", r"$\hat{F}_x$"),
+                                 ("F_y_des", colors_lst[1], "--", r"$\hat{F}_y$")]
         for col, color, linestyle, label in measured_desired_cols:
             if col in df.columns:
                 is_desired = col.endswith("_des")
-                ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle,
-                              marker="o", markerfacecolor="none" if is_desired else color,
+                ax_force.plot(t, df[col].to_numpy(dtype=float), color=color, linestyle=linestyle, marker="o", markerfacecolor="none" if is_desired else color,
                               markeredgecolor=color, alpha=0.8, label=label)
         ax_force.set_ylabel(r"$F\,\left[mN\right]$", fontsize=font_size)
         ax_force.set_ylim(axis_lims["measured_desired_force"])
@@ -1513,12 +1224,9 @@ def training_force_data_and_vid(
 
         ax_update = axes[2]
         ax_angle = ax_update.twinx()
-        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                       label=r"$x^{\,!}$")
-        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                       label=r"$y^{\,!}$")
-        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o",
-                      label=r"$\theta^{\,!}$")
+        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o", label=r"$x^{\,!}$")
+        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o", label=r"$y^{\,!}$")
+        ax_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o", label=r"$\theta^{\,!}$")
         ax_update.set_ylabel(r"trajectory position$\left[m\right]$", fontsize=font_size)
         ax_angle.set_ylabel(r"trajectory angle$\left[\degree\right]$", fontsize=font_size)
         ax_update.set_ylim(axis_lims["position"])
@@ -1529,10 +1237,8 @@ def training_force_data_and_vid(
 
         next_axis_idx = 3
         ax_update_force = axes[next_axis_idx]
-        ax_update_force.plot(t, df["F_x_update"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                             label=r"$F_x^{\,!}$")
-        ax_update_force.plot(t, df["F_y_update"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                             label=r"$F_y^{\,!}$")
+        ax_update_force.plot(t, df["F_x_update"].to_numpy(dtype=float), color=colors_lst[2], marker="o", label=r"$F_x^{\,!}$")
+        ax_update_force.plot(t, df["F_y_update"].to_numpy(dtype=float), color=colors_lst[1], marker="o", label=r"$F_y^{\,!}$")
         ax_update_force.set_ylabel(r"$F^{\,!}\,\left[mN\right]$", fontsize=font_size)
         ax_update_force.set_ylim(axis_lims["update_force"])
         ax_update_force.legend(loc="best", ncol=2, fontsize=8)
@@ -1543,14 +1249,8 @@ def training_force_data_and_vid(
             buckle_cmap = ListedColormap([colors_lst[1], colors_lst[4]])
             buckle_cmap.set_bad("#e5e5e5")
             buckle_norm = BoundaryNorm([-1.5, 0, 1.5], buckle_cmap.N)
-            axes[next_axis_idx].imshow(
-                buckle_update.T,
-                aspect="auto",
-                interpolation="nearest",
-                cmap=buckle_cmap,
-                norm=buckle_norm,
-                extent=[t[0] - 0.5, t[-1] + 0.5, buckle_update.shape[1] - 0.5, -0.5],
-            )
+            axes[next_axis_idx].imshow(buckle_update.T, aspect="auto", interpolation="nearest", cmap=buckle_cmap, norm=buckle_norm,
+                                       extent=[t[0] - 0.5, t[-1] + 0.5, buckle_update.shape[1] - 0.5, -0.5])
             axes[next_axis_idx].set_ylabel("Buckle update", fontsize=font_size)
             axes[next_axis_idx].set_ylim(axis_lims["buckle_y"])
             axes[next_axis_idx].yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -1623,13 +1323,7 @@ def training_force_data_and_vid(
                 draw_frame(frame, frames_dir / f"t_{int(frame_t_values[frame]):03d}.jpg")
             durations = [int(1000 / fps)] * frame_count
             durations[-1] = 3000
-            pil_frames[0].save(
-                out_path,
-                save_all=True,
-                append_images=pil_frames[1:],
-                duration=durations,
-                loop=0,
-            )
+            pil_frames[0].save(out_path, save_all=True, append_images=pil_frames[1:], duration=durations, loop=0)
         else:
             try:
                 import cv2
@@ -1658,16 +1352,10 @@ def training_force_data_and_vid(
     return saved_paths
 
 
-def training_pos_data_and_vid(
-    training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos",
-    csv_file_path: Optional[Union[str, Path]] = None,
-    pics_dir: Optional[Union[str, Path]] = None,
-    output_path: Optional[Union[str, Path]] = None,
-    infer_image_sequence: bool = False,
-    final_t: Optional[int] = None,
-    fps: int = 2,
-    dpi: int = 180,
-) -> List[Path]:
+def training_pos_data_and_vid(training_dir: Union[str, Path] = r"C:\Users\SMR_Admin\OneDrive - huji.ac.il\ORIGAMI\Meca500\data\training\June21_fromPos",
+                              csv_file_path: Optional[Union[str, Path]] = None, pics_dir: Optional[Union[str, Path]] = None,
+                              output_path: Optional[Union[str, Path]] = None, infer_image_sequence: bool = False, final_t: Optional[int] = None,
+                              fps: int = 2, dpi: int = 180) -> List[Path]:
     """
     Create position-training video(s) from desired/measured/update state images.
 
@@ -1698,10 +1386,7 @@ def training_pos_data_and_vid(
         return images
 
     def image_files_in_dir(path: Path) -> List[Path]:
-        return sorted(
-            [item for item in path.iterdir() if item.is_file() and item.suffix.lower() in image_exts],
-            key=natural_key,
-        )
+        return sorted([item for item in path.iterdir() if item.is_file() and item.suffix.lower() in image_exts], key=natural_key)
 
     def infer_sequence_images(path: Path) -> Tuple[Optional[Path], List[Tuple[int, Path, Path]]]:
         image_paths = image_files_in_dir(path)
@@ -1721,8 +1406,7 @@ def training_pos_data_and_vid(
         meas_images = numbered_image_map(path, ("meas",))
         update_images = numbered_image_map(path, ("up", "update"))
         frame_numbers = sorted(set(meas_images).intersection(update_images))
-        frame_entries = [(frame_number, meas_images[frame_number], update_images[frame_number])
-                         for frame_number in frame_numbers]
+        frame_entries = [(frame_number, meas_images[frame_number], update_images[frame_number]) for frame_number in frame_numbers]
         return des_image, frame_entries
 
     def get_state_images(path: Path) -> Tuple[Optional[Path], List[Tuple[int, Path, Path]]]:
@@ -1755,10 +1439,7 @@ def training_pos_data_and_vid(
             out_path = Path(output_path) if output_path is not None else csv_path.with_name(f"{csv_path.stem}_position_states_vid.mp4")
             return [(csv_path, image_dir, out_path)]
 
-        csv_paths = [
-            path for path in training_dir.rglob("*.csv")
-            if "oldver" not in path.stem.lower() and "dataset" not in path.stem.lower()
-        ]
+        csv_paths = [path for path in training_dir.rglob("*.csv") if "oldver" not in path.stem.lower() and "dataset" not in path.stem.lower()]
         pairs = []
         for csv_path in sorted(csv_paths, key=natural_key):
             image_dir = find_pics_dir_for_csv(csv_path)
@@ -1785,31 +1466,15 @@ def training_pos_data_and_vid(
 
     def build_axis_lims(df_full: pd.DataFrame) -> dict:
         t_full = df_full["t"].to_numpy(dtype=float) if "t" in df_full.columns else np.arange(1, len(df_full) + 1, dtype=float)
-        return {
-            "x": time_step_lims(t_full),
-            "measured_desired_position": padded_lims([
-                df_full["x_rest_meas"].to_numpy(dtype=float),
-                df_full["y_rest_meas"].to_numpy(dtype=float),
-                df_full["x_rest_des"].to_numpy(dtype=float),
-                df_full["y_rest_des"].to_numpy(dtype=float),
-            ]),
-            "update_position": padded_lims([
-                df_full["upd_x_tip"].to_numpy(dtype=float),
-                df_full["upd_y_tip"].to_numpy(dtype=float),
-            ]),
-            "measured_desired_angle": centered_lims(
-                df_full["theta_rest_des"].to_numpy(dtype=float),
-                [
-                df_full["theta_rest_meas"].to_numpy(dtype=float),
-                df_full["theta_rest_des"].to_numpy(dtype=float),
-                ],
-            ),
-            "update_angle": padded_lims([df_full["upd_tip_angle"].to_numpy(dtype=float)]),
-            "loss": padded_lims([
-                df_full["loss_MSE"].to_numpy(dtype=float),
-                np.zeros(len(df_full), dtype=float),
-            ]),
-        }
+        return {"x": time_step_lims(t_full), "measured_desired_position": padded_lims([df_full["x_rest_meas"].to_numpy(dtype=float),
+                                                                                       df_full["y_rest_meas"].to_numpy(dtype=float),
+                                                                                       df_full["x_rest_des"].to_numpy(dtype=float),
+                                                                                       df_full["y_rest_des"].to_numpy(dtype=float)]),
+                "update_position": padded_lims([df_full["upd_x_tip"].to_numpy(dtype=float), df_full["upd_y_tip"].to_numpy(dtype=float)]),
+                "measured_desired_angle": centered_lims(df_full["theta_rest_des"].to_numpy(dtype=float), [ df_full["theta_rest_meas"].to_numpy(dtype=float),
+                                                                                                          df_full["theta_rest_des"].to_numpy(dtype=float)]),
+                "update_angle": padded_lims([df_full["upd_tip_angle"].to_numpy(dtype=float)]), 
+                "loss": padded_lims([df_full["loss_MSE"].to_numpy(dtype=float), np.zeros(len(df_full), dtype=float)])}
 
     def plot_position_snapshot(fig: plt.Figure, axes: List[plt.Axes], df_full: pd.DataFrame,
                                frame_idx: int, axis_lims: dict) -> None:
@@ -1822,14 +1487,14 @@ def training_pos_data_and_vid(
 
         ax_meas_des = axes[0]
         ax_meas_des_angle = ax_meas_des.twinx()
-        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2],
-                         marker="o", markerfacecolor=colors_lst[2], markeredgecolor=colors_lst[2])
-        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1],
-                         marker="o", markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1])
-        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red,
-                               marker="o", markerfacecolor=red, markeredgecolor=red)
-        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--",
-                         marker="o", markerfacecolor="none", markeredgecolor=colors_lst[2])
+        ax_meas_des.plot(t, df["x_rest_meas"].to_numpy(dtype=float), color=colors_lst[2], marker="o", markerfacecolor=colors_lst[2], 
+                         markeredgecolor=colors_lst[2])
+        ax_meas_des.plot(t, df["y_rest_meas"].to_numpy(dtype=float), color=colors_lst[1], marker="o", 
+                         markerfacecolor=colors_lst[1], markeredgecolor=colors_lst[1])
+        ax_meas_des_angle.plot(t, df["theta_rest_meas"].to_numpy(dtype=float), color=red,marker="o", markerfacecolor=red, 
+                               markeredgecolor=red)
+        ax_meas_des.plot(t, df["x_rest_des"].to_numpy(dtype=float), color=colors_lst[2], linestyle="--",marker="o", markerfacecolor="none", 
+                         markeredgecolor=colors_lst[2])
         ax_meas_des.plot(t, df["y_rest_des"].to_numpy(dtype=float), color=colors_lst[1], linestyle="--",
                          marker="o", markerfacecolor="none", markeredgecolor=colors_lst[1])
         ax_meas_des_angle.plot(t, df["theta_rest_des"].to_numpy(dtype=float), color=red, linestyle="--",
@@ -1856,12 +1521,9 @@ def training_pos_data_and_vid(
 
         ax_update = axes[2]
         ax_update_angle = ax_update.twinx()
-        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o",
-                       label=r"$x^{\,!}$")
-        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o",
-                       label=r"$y^{\,!}$")
-        ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o",
-                             label=r"$\theta^{\,!}$")
+        ax_update.plot(t, df["upd_x_tip"].to_numpy(dtype=float), color=colors_lst[2], marker="o", label=r"$x^{\,!}$")
+        ax_update.plot(t, df["upd_y_tip"].to_numpy(dtype=float), color=colors_lst[1], marker="o", label=r"$y^{\,!}$")
+        ax_update_angle.plot(t, df["upd_tip_angle"].to_numpy(dtype=float), color=red, marker="o", label=r"$\theta^{\,!}$")
         ax_update.set_xlabel("t", fontsize=font_size)
         ax_update.set_ylabel(r"trajectory position $\left[m\right]$", fontsize=font_size)
         ax_update_angle.set_ylabel(r"trajectory angle $\left[\degree\right]$", fontsize=font_size)
@@ -1891,11 +1553,8 @@ def training_pos_data_and_vid(
 
     for csv_path, image_dir, out_path in pairs:
         df = prepare_dataframe(csv_path)
-        required_cols = [
-            "upd_x_tip", "upd_y_tip", "upd_tip_angle", "loss_MSE",
-            "x_rest_meas", "y_rest_meas", "theta_rest_meas",
-            "x_rest_des", "y_rest_des", "theta_rest_des",
-        ]
+        required_cols = ["upd_x_tip", "upd_y_tip", "upd_tip_angle", "loss_MSE", "x_rest_meas", "y_rest_meas", "theta_rest_meas",
+                         "x_rest_des", "y_rest_des", "theta_rest_des"]
         missing_cols = [col for col in required_cols if col not in df.columns]
         if missing_cols:
             raise KeyError(f"Missing required columns in {csv_path}: {missing_cols}")
@@ -1927,11 +1586,7 @@ def training_pos_data_and_vid(
             ax_meas = fig.add_subplot(grid[0, 0])
             ax_update = fig.add_subplot(grid[1, 0])
             ax_des = fig.add_subplot(grid[2, 0])
-            plot_axes = [
-                fig.add_subplot(grid[0, 1]),
-                fig.add_subplot(grid[1, 1]),
-                fig.add_subplot(grid[2, 1]),
-            ]
+            plot_axes = [fig.add_subplot(grid[0, 1]), fig.add_subplot(grid[1, 1]), fig.add_subplot(grid[2, 1])]
 
             frame_number, meas_image, update_image = frame_entries[frame]
             show_image(ax_meas, meas_image, "measured")
@@ -1953,13 +1608,7 @@ def training_pos_data_and_vid(
                 draw_frame(frame, frames_dir / f"t_{int(frame_t_values[frame]):03d}.jpg")
             durations = [int(1000 / fps)] * frame_count
             durations[-1] = 3000
-            pil_frames[0].save(
-                out_path,
-                save_all=True,
-                append_images=pil_frames[1:],
-                duration=durations,
-                loop=0,
-            )
+            pil_frames[0].save(out_path, save_all=True, append_images=pil_frames[1:], duration=durations, loop=0)
         else:
             try:
                 import cv2
@@ -1995,10 +1644,8 @@ def plot_force_along_traj_comparsion(F_vec_exp, F_vec_sim, x_y_theta_vec_exp, ex
     y_pos = x_y_theta_vec_exp[0][:, 1]
 
     for i, label in enumerate(exp_labels):
-        h1 = plt.errorbar(y_pos, F_vec_exp[i][:, 0], yerr=err,
-                        color=colors_lst[i], fmt='.', linestyle='--')
-        h2 = plt.errorbar(y_pos, F_vec_exp[i][:, 1], yerr=err,
-                        color=colors_lst[i], fmt='.', linestyle='--')
+        h1 = plt.errorbar(y_pos, F_vec_exp[i][:, 0], yerr=err, color=colors_lst[i], fmt='.', linestyle='--')
+        h2 = plt.errorbar(y_pos, F_vec_exp[i][:, 1], yerr=err, color=colors_lst[i], fmt='.', linestyle='--')
 
         # h1/h2 are ErrorbarContainer; legend wants the main line:
         handles += [h1.lines[0], h2.lines[0]]
